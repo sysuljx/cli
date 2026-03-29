@@ -211,6 +211,7 @@ func TestDryRunViewOps(t *testing.T) {
 	assertDryRunContains(t, dryRunViewSetWrapped(setWrappedInvalidRT, "group", "group_config"), "PUT /open-apis/base/v3/bases/app_x/tables/tbl_1/views/viw_1/group")
 
 	assertDryRunContains(t, dryRunViewGetFilter(ctx, listRT), "GET /open-apis/base/v3/bases/app_x/tables/tbl_1/views/viw_1/filter")
+	assertDryRunContains(t, dryRunViewGetVisibleFields(ctx, listRT), "GET /open-apis/base/v3/bases/app_x/tables/tbl_1/views/viw_1/visible_fields")
 	assertDryRunContains(t, dryRunViewGetGroup(ctx, listRT), "GET /open-apis/base/v3/bases/app_x/tables/tbl_1/views/viw_1/group")
 	assertDryRunContains(t, dryRunViewGetSort(ctx, listRT), "GET /open-apis/base/v3/bases/app_x/tables/tbl_1/views/viw_1/sort")
 	assertDryRunContains(t, dryRunViewGetTimebar(ctx, listRT), "GET /open-apis/base/v3/bases/app_x/tables/tbl_1/views/viw_1/timebar")

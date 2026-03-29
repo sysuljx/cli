@@ -77,8 +77,16 @@ func dryRunViewGetFilter(_ context.Context, runtime *common.RuntimeContext) *com
 	return dryRunViewGetProperty(runtime, "filter")
 }
 
+func dryRunViewGetVisibleFields(_ context.Context, runtime *common.RuntimeContext) *common.DryRunAPI {
+	return dryRunViewGetProperty(runtime, "visible_fields")
+}
+
 func dryRunViewSetFilter(_ context.Context, runtime *common.RuntimeContext) *common.DryRunAPI {
 	return dryRunViewSetJSONObject(runtime, "filter")
+}
+
+func dryRunViewSetVisibleFields(_ context.Context, runtime *common.RuntimeContext) *common.DryRunAPI {
+	return dryRunViewSetJSONObject(runtime, "visible_fields")
 }
 
 func dryRunViewGetGroup(_ context.Context, runtime *common.RuntimeContext) *common.DryRunAPI {
@@ -135,6 +143,10 @@ func validateViewJSONObject(runtime *common.RuntimeContext) error {
 }
 
 func validateViewJSONValue(runtime *common.RuntimeContext) error {
+	return nil
+}
+
+func validateViewVisibleFields(_ *common.RuntimeContext) error {
 	return nil
 }
 
@@ -240,6 +252,22 @@ func executeViewSetWrapped(runtime *common.RuntimeContext, segment string, wrapp
 		return err
 	}
 	runtime.Out(map[string]interface{}{key: data}, nil)
+	return nil
+}
+
+func executeViewSetVisibleFields(runtime *common.RuntimeContext) error {
+	baseToken := runtime.Str("base-token")
+	tableIDValue := baseTableID(runtime)
+	viewRef := runtime.Str("view-id")
+	body, err := parseJSONObject(runtime.Str("json"), "json")
+	if err != nil {
+		return err
+	}
+	data, err := baseV3CallAny(runtime, "PUT", baseV3Path("bases", baseToken, "tables", tableIDValue, "views", viewRef, "visible_fields"), nil, body)
+	if err != nil {
+		return err
+	}
+	runtime.Out(map[string]interface{}{"visible_fields": data}, nil)
 	return nil
 }
 
