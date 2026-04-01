@@ -140,6 +140,11 @@ var MailWatch = common.Shortcut{
 			Desc(fmt.Sprintf("Subscribe mailbox events (effective_folder_ids=%s, effective_label_ids=%s)", effectiveFolderDisplay, effectiveLabelDisplay)).
 			Body(map[string]interface{}{"event_type": 1})
 
+		if mailbox == "me" {
+			d.GET(mailboxPath("me", "profile")).
+				Desc("Resolve mailbox address for event filtering (requires scope mail:user_mailbox:readonly)")
+		}
+
 		if len(resolvedLabelIDs) > 0 {
 			d.Set("filter_label_ids", strings.Join(resolvedLabelIDs, ","))
 		}
