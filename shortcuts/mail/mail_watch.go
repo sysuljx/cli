@@ -245,8 +245,9 @@ var MailWatch = common.Shortcut{
 		}
 		info("Mailbox subscribed.")
 
-		unsubscribe := func() {
-			runtime.CallAPI("POST", mailboxPath(mailbox, "event", "unsubscribe"), nil, map[string]interface{}{"event_type": 1}) //nolint:errcheck
+		unsubscribe := func() error {
+			_, err := runtime.CallAPI("POST", mailboxPath(mailbox, "event", "unsubscribe"), nil, map[string]interface{}{"event_type": 1})
+			return err
 		}
 
 		// Resolve "me" to the actual email address so we can filter events.
@@ -254,7 +255,7 @@ var MailWatch = common.Shortcut{
 		if mailbox == "me" {
 			resolved, profileErr := fetchMailboxPrimaryEmail(runtime, "me")
 			if profileErr != nil {
-				unsubscribe()
+				unsubscribe() //nolint:errcheck // best-effort cleanup; primary error is profileErr
 				return enhanceProfileError(profileErr)
 			}
 			mailboxFilter = resolved
@@ -424,14 +425,18 @@ var MailWatch = common.Shortcut{
 			<-sigCh
 			info(fmt.Sprintf("\nShutting down... (received %d events)", eventCount))
 			info("Unsubscribing mailbox events...")
-			unsubscribe()
-			info("Mailbox unsubscribed.")
+			if unsubErr := unsubscribe(); unsubErr != nil {
+				fmt.Fprintf(errOut, "Warning: unsubscribe failed: %v\n", unsubErr)
+			} else {
+				info("Mailbox unsubscribed.")
+			}
 			signal.Stop(sigCh)
 			os.Exit(0)
 		}()
 
 		info("Connected. Waiting for mail events... (Ctrl+C to stop)")
 		if err := cli.Start(ctx); err != nil {
+			unsubscribe() //nolint:errcheck // best-effort cleanup
 			return output.ErrNetwork("WebSocket connection failed: %v", err)
 		}
 		return nil
