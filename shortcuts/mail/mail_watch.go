@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"syscall"
 
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
@@ -245,9 +246,13 @@ var MailWatch = common.Shortcut{
 		}
 		info("Mailbox subscribed.")
 
+		var unsubOnce sync.Once
 		unsubscribe := func() error {
-			_, err := runtime.CallAPI("POST", mailboxPath(mailbox, "event", "unsubscribe"), nil, map[string]interface{}{"event_type": 1})
-			return err
+			var callErr error
+			unsubOnce.Do(func() {
+				_, callErr = runtime.CallAPI("POST", mailboxPath(mailbox, "event", "unsubscribe"), nil, map[string]interface{}{"event_type": 1})
+			})
+			return callErr
 		}
 
 		// Resolve "me" to the actual email address so we can filter events.

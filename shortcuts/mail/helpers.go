@@ -1930,7 +1930,7 @@ func validateLabelReadScope(runtime *common.RuntimeContext) error {
 	if missing := auth.MissingScopes(stored.Scope, required); len(missing) > 0 {
 		return output.ErrWithHint(output.ExitAuth, "missing_scope",
 			fmt.Sprintf("label resolution requires scope: %s", strings.Join(missing, ", ")),
-			fmt.Sprintf("run `lark-cli auth login --scope \"%s\"` to grant label read permission", strings.Join(missing, " ")))
+			fmt.Sprintf("run `lark-cli auth login --scope \"%s\"` to grant label access permission", strings.Join(missing, " ")))
 	}
 	return nil
 }
