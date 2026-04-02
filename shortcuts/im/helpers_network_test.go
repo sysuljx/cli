@@ -52,9 +52,10 @@ func shortcutRawResponse(status int, body []byte, headers http.Header) *http.Res
 		headers = make(http.Header)
 	}
 	return &http.Response{
-		StatusCode: status,
-		Header:     headers,
-		Body:       io.NopCloser(bytes.NewReader(body)),
+		StatusCode:    status,
+		Header:        headers,
+		Body:          io.NopCloser(bytes.NewReader(body)),
+		ContentLength: int64(len(body)),
 	}
 }
 
@@ -92,6 +93,7 @@ func newBotShortcutRuntime(t *testing.T, rt http.RoundTripper) *common.RuntimeCo
 			HttpClient: func() (*http.Client, error) { return httpClient, nil },
 			LarkClient: func() (*lark.Client, error) { return sdk, nil },
 			Credential: testCred,
+			FileIO:     &cmdutil.LocalFileIO{},
 			IOStreams: &cmdutil.IOStreams{
 				Out:    &bytes.Buffer{},
 				ErrOut: &bytes.Buffer{},
@@ -241,7 +243,12 @@ func TestDownloadIMResourceToPathSuccess(t *testing.T) {
 		}
 	}))
 
-	target := filepath.Join(t.TempDir(), "nested", "resource.bin")
+	tmpDir := t.TempDir()
+	origWd, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(origWd)
+
+	target := filepath.Join("nested", "resource.bin")
 	_, size, err := downloadIMResourceToPath(context.Background(), runtime, "om_123", "file_123", "file", target)
 	if err != nil {
 		t.Fatalf("downloadIMResourceToPath() error = %v", err)
@@ -249,7 +256,7 @@ func TestDownloadIMResourceToPathSuccess(t *testing.T) {
 	if size != int64(len(payload)) {
 		t.Fatalf("downloadIMResourceToPath() size = %d, want %d", size, len(payload))
 	}
-	data, err := os.ReadFile(target)
+	data, err := os.ReadFile(filepath.Join(tmpDir, "nested", "resource.bin"))
 	if err != nil {
 		t.Fatalf("ReadFile() error = %v", err)
 	}

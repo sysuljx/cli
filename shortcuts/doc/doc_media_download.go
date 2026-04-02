@@ -4,6 +4,7 @@
 package doc
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
 
+	"github.com/larksuite/cli/extension/fileio"
 	"github.com/larksuite/cli/internal/output"
 	"github.com/larksuite/cli/internal/validate"
 	"github.com/larksuite/cli/internal/vfs"
@@ -66,9 +68,9 @@ var DocMediaDownload = common.Shortcut{
 		if err := validate.ResourceName(token, "--token"); err != nil {
 			return output.ErrValidation("%s", err)
 		}
-		// Early path validation before API call (final validation after auto-extension below)
-		if _, err := validate.SafeOutputPath(outputPath); err != nil {
-			return output.ErrValidation("unsafe output path: %s", err)
+		// Early path validation via FileIO.Stat
+		if _, statErr := runtime.FileIO().Stat(outputPath); statErr != nil && !os.IsNotExist(statErr) {
+			return output.ErrValidation("unsafe output path: %s", statErr)
 		}
 
 		fmt.Fprintf(runtime.IO().ErrOut, "Downloading: %s %s\n", mediaType, common.MaskToken(token))
@@ -105,27 +107,25 @@ var DocMediaDownload = common.Shortcut{
 			}
 		}
 
-		safePath, err := validate.SafeOutputPath(finalPath)
-		if err != nil {
-			return output.ErrValidation("unsafe output path: %s", err)
-		}
-		if err := common.EnsureWritableFile(safePath, overwrite); err != nil {
-			return err
-		}
-
-		if err := vfs.MkdirAll(filepath.Dir(safePath), 0700); err != nil {
-			return output.Errorf(output.ExitInternal, "io", "cannot create parent directory: %v", err)
+		// Overwrite check on final path (after extension detection)
+		if !overwrite {
+			if _, statErr := runtime.FileIO().Stat(finalPath); statErr == nil {
+				return output.ErrValidation("output file already exists: %s (use --overwrite to replace)", finalPath)
+			}
 		}
 
-		sizeBytes, err := validate.AtomicWriteFromReader(safePath, resp.Body, 0600)
+		result, err := runtime.FileIO().Save(finalPath, fileio.SaveOptions{
+			ContentType:   apiResp.Header.Get("Content-Type"),
+			ContentLength: int64(len(apiResp.RawBody)),
+		}, bytes.NewReader(apiResp.RawBody))
 		if err != nil {
 			return output.Errorf(output.ExitInternal, "io", "cannot create file: %v", err)
 		}
 
 		runtime.Out(map[string]interface{}{
-			"saved_path":   safePath,
-			"size_bytes":   sizeBytes,
-			"content_type": resp.Header.Get("Content-Type"),
+			"saved_path":   finalPath,
+			"size_bytes":   result.Size(),
+			"content_type": apiResp.Header.Get("Content-Type"),
 		}, nil)
 		return nil
 	},

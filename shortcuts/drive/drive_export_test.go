@@ -472,7 +472,7 @@ func TestSaveContentToOutputDirRejectsOverwriteWithoutFlag(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(cwd) })
 
-	_, err = saveContentToOutputDir(".", "exists.txt", []byte("new"), false)
+	_, err = saveContentToOutputDir(&cmdutil.LocalFileIO{}, ".", "exists.txt", []byte("new"), false)
 	if err == nil || !strings.Contains(err.Error(), "already exists") {
 		t.Fatalf("expected overwrite error, got %v", err)
 	}

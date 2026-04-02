@@ -31,10 +31,10 @@ type FileIO interface {
 	// Use os.IsNotExist(err) to distinguish "file not found" from "invalid path".
 	Stat(name string) (os.FileInfo, error)
 
-	// Save writes content to the target path.
+	// Save writes content to the target path and returns a SaveResult.
 	// The default implementation validates via SafeOutputPath, creates
 	// parent directories, and writes atomically.
-	Save(path string, opts SaveOptions, body io.Reader) error
+	Save(path string, opts SaveOptions, body io.Reader) (SaveResult, error)
 }
 
 // File is the interface returned by FileIO.Open.
@@ -45,6 +45,11 @@ type File interface {
 	io.ReaderAt
 	io.Closer
 	Stat() (os.FileInfo, error)
+}
+
+// SaveResult holds the outcome of a Save operation.
+type SaveResult interface {
+	Size() int64 // actual bytes written
 }
 
 // SaveOptions carries metadata for Save.

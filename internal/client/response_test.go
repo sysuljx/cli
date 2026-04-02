@@ -6,6 +6,7 @@ package client
 import (
 	"bytes"
 	"errors"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -13,6 +14,9 @@ import (
 	"testing"
 
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
+
+	"github.com/larksuite/cli/extension/fileio"
+	"github.com/larksuite/cli/internal/validate"
 
 	"github.com/larksuite/cli/internal/output"
 )
@@ -150,11 +154,11 @@ func TestSaveResponse(t *testing.T) {
 	body := []byte("hello binary data")
 	resp := newApiResp(body, map[string]string{"Content-Type": "application/octet-stream"})
 
-	meta, err := SaveResponse(resp, "test_output.bin")
+	meta, err := SaveResponse(&testLocalFileIO{}, resp, "test_output.bin")
 	if err != nil {
 		t.Fatalf("SaveResponse failed: %v", err)
 	}
-	if meta["size_bytes"] != len(body) {
+	if meta["size_bytes"] != int64(len(body)) {
 		t.Errorf("expected size_bytes=%d, got %v", len(body), meta["size_bytes"])
 	}
 
@@ -176,7 +180,7 @@ func TestSaveResponse_CreatesDir(t *testing.T) {
 
 	resp := newApiResp([]byte("data"), map[string]string{"Content-Type": "application/octet-stream"})
 
-	meta, err := SaveResponse(resp, filepath.Join("sub", "deep", "out.bin"))
+	meta, err := SaveResponse(&testLocalFileIO{}, resp, filepath.Join("sub", "deep", "out.bin"))
 	if err != nil {
 		t.Fatalf("SaveResponse with nested dir failed: %v", err)
 	}
@@ -195,6 +199,7 @@ func TestHandleResponse_JSON(t *testing.T) {
 	err := HandleResponse(resp, ResponseOptions{
 		Out:    &out,
 		ErrOut: &errOut,
+		FileIO: &testLocalFileIO{},
 	})
 	if err != nil {
 		t.Fatalf("HandleResponse failed: %v", err)
@@ -213,6 +218,7 @@ func TestHandleResponse_JSONWithError(t *testing.T) {
 	err := HandleResponse(resp, ResponseOptions{
 		Out:    &out,
 		ErrOut: &errOut,
+		FileIO: &testLocalFileIO{},
 	})
 	if err == nil {
 		t.Error("expected error for non-zero code")
@@ -232,6 +238,7 @@ func TestHandleResponse_BinaryAutoSave(t *testing.T) {
 	err := HandleResponse(resp, ResponseOptions{
 		Out:    &out,
 		ErrOut: &errOut,
+		FileIO: &testLocalFileIO{},
 	})
 	if err != nil {
 		t.Fatalf("HandleResponse binary failed: %v", err)
@@ -255,6 +262,7 @@ func TestHandleResponse_BinaryWithOutput(t *testing.T) {
 		OutputPath: "out.png",
 		Out:        &out,
 		ErrOut:     &errOut,
+		FileIO:     &testLocalFileIO{},
 	})
 	if err != nil {
 		t.Fatalf("HandleResponse with output path failed: %v", err)
@@ -269,7 +277,7 @@ func TestHandleResponse_NonJSONError_404(t *testing.T) {
 	resp := newApiRespWithStatus(404, []byte("404 page not found"), map[string]string{"Content-Type": "text/plain"})
 
 	var out, errOut bytes.Buffer
-	err := HandleResponse(resp, ResponseOptions{Out: &out, ErrOut: &errOut})
+	err := HandleResponse(resp, ResponseOptions{Out: &out, ErrOut: &errOut, FileIO: &testLocalFileIO{}})
 	if err == nil {
 		t.Fatal("expected error for 404 text/plain")
 	}
@@ -287,7 +295,7 @@ func TestHandleResponse_NonJSONError_502(t *testing.T) {
 	resp := newApiRespWithStatus(502, []byte("<html>Bad Gateway</html>"), map[string]string{"Content-Type": "text/html"})
 
 	var out, errOut bytes.Buffer
-	err := HandleResponse(resp, ResponseOptions{Out: &out, ErrOut: &errOut})
+	err := HandleResponse(resp, ResponseOptions{Out: &out, ErrOut: &errOut, FileIO: &testLocalFileIO{}})
 	if err == nil {
 		t.Fatal("expected error for 502 text/html")
 	}
@@ -310,7 +318,7 @@ func TestHandleResponse_200TextPlain_SavesFile(t *testing.T) {
 	resp := newApiRespWithStatus(200, []byte("plain text file content"), map[string]string{"Content-Type": "text/plain"})
 
 	var out, errOut bytes.Buffer
-	err := HandleResponse(resp, ResponseOptions{Out: &out, ErrOut: &errOut})
+	err := HandleResponse(resp, ResponseOptions{Out: &out, ErrOut: &errOut, FileIO: &testLocalFileIO{}})
 	if err != nil {
 		t.Fatalf("expected no error for 200 text/plain, got: %v", err)
 	}
@@ -341,11 +349,49 @@ func TestHandleResponse_403JSON_CheckLarkResponse(t *testing.T) {
 	resp := newApiRespWithStatus(403, body, map[string]string{"Content-Type": "application/json"})
 
 	var out, errOut bytes.Buffer
-	err := HandleResponse(resp, ResponseOptions{Out: &out, ErrOut: &errOut})
+	err := HandleResponse(resp, ResponseOptions{Out: &out, ErrOut: &errOut, FileIO: &testLocalFileIO{}})
 	if err == nil {
 		t.Fatal("expected error for 403 JSON with non-zero code")
 	}
 	if !strings.Contains(err.Error(), "99991400") {
 		t.Errorf("expected lark error code in message, got: %s", err.Error())
 	}
+}
+
+// testLocalFileIO is a minimal fileio.FileIO for tests that writes to the local filesystem.
+type testLocalFileIO struct{}
+
+func (t *testLocalFileIO) Open(name string) (fileio.File, error) {
+	safePath, err := validate.SafeInputPath(name)
+	if err != nil {
+		return nil, err
+	}
+	return os.Open(safePath)
+}
+
+func (t *testLocalFileIO) Stat(name string) (os.FileInfo, error) {
+	safePath, err := validate.SafeInputPath(name)
+	if err != nil {
+		return nil, err
+	}
+	return os.Stat(safePath)
+}
+
+type testSaveResult struct{ size int64 }
+
+func (r *testSaveResult) Size() int64 { return r.size }
+
+func (t *testLocalFileIO) Save(path string, _ fileio.SaveOptions, body io.Reader) (fileio.SaveResult, error) {
+	safePath, err := validate.SafeOutputPath(path)
+	if err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(filepath.Dir(safePath), 0755); err != nil {
+		return nil, err
+	}
+	n, err := validate.AtomicWriteFromReader(safePath, body, 0644)
+	if err != nil {
+		return nil, err
+	}
+	return &testSaveResult{size: n}, nil
 }

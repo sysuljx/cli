@@ -49,19 +49,25 @@ func (l *LocalFileIO) Stat(name string) (os.FileInfo, error) {
 	return os.Stat(safePath)
 }
 
+// localSaveResult implements fileio.SaveResult.
+type localSaveResult struct{ size int64 }
+
+func (r *localSaveResult) Size() int64 { return r.size }
+
 // Save writes body to path atomically after validating the output path.
-// Parent directories are created as needed.
-func (l *LocalFileIO) Save(path string, _ fileio.SaveOptions, body io.Reader) error {
+// Parent directories are created as needed. The body is streamed directly
+// to a temp file and renamed, avoiding full in-memory buffering.
+func (l *LocalFileIO) Save(path string, _ fileio.SaveOptions, body io.Reader) (fileio.SaveResult, error) {
 	safePath, err := validate.SafeOutputPath(path)
 	if err != nil {
-		return err
-	}
-	data, err := io.ReadAll(body)
-	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := os.MkdirAll(filepath.Dir(safePath), 0755); err != nil {
-		return err
+		return nil, err
 	}
-	return validate.AtomicWrite(safePath, data, 0644)
+	n, err := validate.AtomicWriteFromReader(safePath, body, 0644)
+	if err != nil {
+		return nil, err
+	}
+	return &localSaveResult{size: n}, nil
 }

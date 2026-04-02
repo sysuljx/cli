@@ -11,10 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/larksuite/cli/internal/client"
+	"github.com/larksuite/cli/extension/fileio"
 	"github.com/larksuite/cli/internal/output"
-	"github.com/larksuite/cli/internal/validate"
-	"github.com/larksuite/cli/internal/vfs"
 	"github.com/larksuite/cli/shortcuts/common"
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
 )
@@ -54,8 +52,9 @@ var ImMessagesResourcesDownload = common.Shortcut{
 		if err != nil {
 			return output.ErrValidation("%s", err)
 		}
-		if _, err := validate.SafeOutputPath(relPath); err != nil {
-			return output.ErrValidation("unsafe output path: %s", err)
+		// Early path validation via FileIO.Stat
+		if _, statErr := runtime.FileIO().Stat(relPath); statErr != nil && !os.IsNotExist(statErr) {
+			return output.ErrValidation("unsafe output path: %s", statErr)
 		}
 		return nil
 	},
@@ -67,12 +66,8 @@ var ImMessagesResourcesDownload = common.Shortcut{
 		if err != nil {
 			return output.ErrValidation("invalid output path: %s", err)
 		}
-		safePath, err := validate.SafeOutputPath(relPath)
-		if err != nil {
-			return output.ErrValidation("unsafe output path: %s", err)
-		}
 
-		finalPath, sizeBytes, err := downloadIMResourceToPath(ctx, runtime, messageId, fileKey, fileType, safePath)
+		finalPath, sizeBytes, err := downloadIMResourceToPath(ctx, runtime, messageId, fileKey, fileType, relPath)
 		if err != nil {
 			return err
 		}
@@ -156,8 +151,12 @@ func downloadIMResourceToPath(ctx context.Context, runtime *common.RuntimeContex
 	}
 	defer downloadResp.Body.Close()
 
-	if err := vfs.MkdirAll(filepath.Dir(safePath), 0700); err != nil {
-		return "", 0, output.Errorf(output.ExitInternal, "api_error", "cannot create parent directory: %s", err)
+	if downloadResp.StatusCode >= 400 {
+		body, _ := io.ReadAll(io.LimitReader(downloadResp.Body, 4096))
+		if len(body) > 0 {
+			return "", 0, output.ErrNetwork("download failed: HTTP %d: %s", downloadResp.StatusCode, strings.TrimSpace(string(body)))
+		}
+		return "", 0, output.ErrNetwork("download failed: HTTP %d", downloadResp.StatusCode)
 	}
 
 	// Auto-detect extension from Content-Type if missing
@@ -171,9 +170,12 @@ func downloadIMResourceToPath(ctx context.Context, runtime *common.RuntimeContex
 		}
 	}
 
-	sizeBytes, err := validate.AtomicWriteFromReader(finalPath, downloadResp.Body, 0600)
+	result, err := runtime.FileIO().Save(finalPath, fileio.SaveOptions{
+		ContentType:   downloadResp.Header.Get("Content-Type"),
+		ContentLength: downloadResp.ContentLength,
+	}, downloadResp.Body)
 	if err != nil {
 		return "", 0, output.Errorf(output.ExitInternal, "api_error", "cannot create file: %s", err)
 	}
-	return finalPath, sizeBytes, nil
+	return finalPath, result.Size(), nil
 }

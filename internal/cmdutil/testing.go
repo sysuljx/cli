@@ -68,6 +68,7 @@ func TestFactory(t *testing.T, config *core.CliConfig) (*Factory, *bytes.Buffer,
 		IOStreams:  &IOStreams{In: nil, Out: stdoutBuf, ErrOut: stderrBuf},
 		Keychain:   &noopKeychain{},
 		Credential: testCred,
+		FileIO:     &LocalFileIO{},
 	}
 	return f, stdoutBuf, stderrBuf, reg
 }
