@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 
 	extcred "github.com/larksuite/cli/extension/credential"
+	"github.com/larksuite/cli/extension/fileio"
 	"github.com/larksuite/cli/internal/client"
 	"github.com/larksuite/cli/internal/core"
 	"github.com/larksuite/cli/internal/credential"
@@ -40,6 +41,8 @@ type Factory struct {
 	ResolvedIdentity     core.Identity           // identity resolved by the last ResolveAs call
 
 	Credential *credential.CredentialProvider
+
+	FileIO fileio.FileIO // file transfer abstraction (default: local filesystem)
 }
 
 // ResolveAs returns the effective identity type.

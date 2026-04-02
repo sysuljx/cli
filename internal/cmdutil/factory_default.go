@@ -17,6 +17,7 @@ import (
 	"golang.org/x/term"
 
 	extcred "github.com/larksuite/cli/extension/credential"
+	"github.com/larksuite/cli/extension/fileio"
 	"github.com/larksuite/cli/internal/auth"
 	"github.com/larksuite/cli/internal/core"
 	"github.com/larksuite/cli/internal/credential"
@@ -42,6 +43,11 @@ func NewDefault(inv InvocationContext) *Factory {
 		Out:        os.Stdout,
 		ErrOut:     os.Stderr,
 		IsTerminal: term.IsTerminal(int(os.Stdin.Fd())),
+	}
+
+	// Phase 0: FileIO (no dependency)
+	if p := fileio.GetProvider(); p != nil {
+		f.FileIO = p.ResolveFileIO(context.Background())
 	}
 
 	// Phase 1: HttpClient (no credential dependency)

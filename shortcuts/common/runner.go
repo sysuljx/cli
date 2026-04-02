@@ -17,6 +17,7 @@ import (
 	lark "github.com/larksuite/oapi-sdk-go/v3"
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
 
+	"github.com/larksuite/cli/extension/fileio"
 	"github.com/larksuite/cli/internal/auth"
 	"github.com/larksuite/cli/internal/client"
 	"github.com/larksuite/cli/internal/cmdutil"
@@ -294,6 +295,11 @@ func (ctx *RuntimeContext) DoAPIJSON(method, apiPath string, query larkcore.Quer
 // IO returns the IOStreams from the Factory.
 func (ctx *RuntimeContext) IO() *cmdutil.IOStreams {
 	return ctx.Factory.IOStreams
+}
+
+// FileIO returns the FileIO from the Factory.
+func (ctx *RuntimeContext) FileIO() fileio.FileIO {
+	return ctx.Factory.FileIO
 }
 
 // ── Output helpers ──
