@@ -6,12 +6,15 @@ package im
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/larksuite/cli/extension/fileio"
+	"github.com/larksuite/cli/internal/client"
 	"github.com/larksuite/cli/internal/output"
 	"github.com/larksuite/cli/shortcuts/common"
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"

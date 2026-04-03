@@ -12,7 +12,6 @@ import (
 
 	"github.com/larksuite/cli/extension/fileio"
 	"github.com/larksuite/cli/internal/output"
->>>>>>> 2b941a5 (feat: migrate upload/read-file shortcuts to FileIO.Open/Stat (Phase 3))
 	"github.com/larksuite/cli/shortcuts/common"
 	draftpkg "github.com/larksuite/cli/shortcuts/mail/draft"
 )
@@ -270,9 +269,6 @@ func loadPatchFile(fio fileio.FileIO, path string) (draftpkg.Patch, error) {
 	if err != nil {
 		return patch, fmt.Errorf("--patch-file %q: %w", path, err)
 	}
-<<<<<<< HEAD
-	data, err := vfs.ReadFile(safePath)
-=======
 	defer f.Close()
 	data, err := io.ReadAll(f)
 	if err != nil {

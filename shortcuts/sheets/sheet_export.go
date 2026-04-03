@@ -4,7 +4,6 @@
 package sheets
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -15,7 +14,6 @@ import (
 	"github.com/larksuite/cli/extension/fileio"
 	"github.com/larksuite/cli/internal/output"
 	"github.com/larksuite/cli/internal/validate"
-	"github.com/larksuite/cli/internal/vfs"
 	"github.com/larksuite/cli/shortcuts/common"
 )
 
@@ -131,9 +129,9 @@ var SheetExport = common.Shortcut{
 		defer resp.Body.Close()
 
 		result, err := runtime.FileIO().Save(outputPath, fileio.SaveOptions{
-			ContentType:   apiResp.Header.Get("Content-Type"),
-			ContentLength: int64(len(apiResp.RawBody)),
-		}, bytes.NewReader(apiResp.RawBody))
+			ContentType:   resp.Header.Get("Content-Type"),
+			ContentLength: resp.ContentLength,
+		}, resp.Body)
 		if err != nil {
 			return output.Errorf(output.ExitInternal, "api_error", "cannot create file: %s", err)
 		}

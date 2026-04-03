@@ -4,10 +4,10 @@
 package doc
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -16,7 +16,6 @@ import (
 	"github.com/larksuite/cli/extension/fileio"
 	"github.com/larksuite/cli/internal/output"
 	"github.com/larksuite/cli/internal/validate"
-	"github.com/larksuite/cli/internal/vfs"
 	"github.com/larksuite/cli/shortcuts/common"
 )
 
@@ -115,9 +114,9 @@ var DocMediaDownload = common.Shortcut{
 		}
 
 		result, err := runtime.FileIO().Save(finalPath, fileio.SaveOptions{
-			ContentType:   apiResp.Header.Get("Content-Type"),
-			ContentLength: int64(len(apiResp.RawBody)),
-		}, bytes.NewReader(apiResp.RawBody))
+			ContentType:   resp.Header.Get("Content-Type"),
+			ContentLength: resp.ContentLength,
+		}, resp.Body)
 		if err != nil {
 			return output.Errorf(output.ExitInternal, "io", "cannot create file: %v", err)
 		}
@@ -125,7 +124,7 @@ var DocMediaDownload = common.Shortcut{
 		runtime.Out(map[string]interface{}{
 			"saved_path":   finalPath,
 			"size_bytes":   result.Size(),
-			"content_type": apiResp.Header.Get("Content-Type"),
+			"content_type": resp.Header.Get("Content-Type"),
 		}, nil)
 		return nil
 	},

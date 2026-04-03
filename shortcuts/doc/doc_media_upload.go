@@ -15,7 +15,6 @@ import (
 
 	"github.com/larksuite/cli/internal/output"
 	"github.com/larksuite/cli/internal/util"
->>>>>>> 2b941a5 (feat: migrate upload/read-file shortcuts to FileIO.Open/Stat (Phase 3))
 	"github.com/larksuite/cli/shortcuts/common"
 )
 
@@ -58,9 +57,6 @@ var MediaUpload = common.Shortcut{
 		docId := runtime.Str("doc-id")
 
 		// Validate file
-<<<<<<< HEAD
-		stat, err := vfs.Stat(filePath)
-=======
 		stat, err := runtime.FileIO().Stat(filePath)
 		if err != nil {
 			return output.ErrValidation("file not found: %s", filePath)

@@ -12,7 +12,6 @@ import (
 
 	"github.com/larksuite/cli/extension/fileio"
 	"github.com/larksuite/cli/internal/validate"
-	"github.com/larksuite/cli/internal/vfs"
 	"github.com/larksuite/cli/shortcuts/mail/filecheck"
 )
 

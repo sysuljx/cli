@@ -16,7 +16,6 @@ import (
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
 
 	"github.com/larksuite/cli/internal/output"
->>>>>>> 2b941a5 (feat: migrate upload/read-file shortcuts to FileIO.Open/Stat (Phase 3))
 	"github.com/larksuite/cli/shortcuts/common"
 )
 
@@ -62,9 +61,6 @@ var DriveUpload = common.Shortcut{
 			fileName = filepath.Base(filePath)
 		}
 
-<<<<<<< HEAD
-		info, err := vfs.Stat(filePath)
-=======
 		info, err := runtime.FileIO().Stat(filePath)
 		if err != nil {
 			return output.ErrValidation("cannot read file: %s", err)
