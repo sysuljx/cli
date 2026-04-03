@@ -87,6 +87,7 @@ lark-cli im <resource> <method> [flags] # 调用 API
 ### chat.members
 
   - `create` — 将用户或机器人拉入群聊。Identity: supports `user` and `bot`; the caller must be in the target chat; for `bot` calls, added users must be within the app's availability; for internal chats the operator must belong to the same tenant; if only owners/admins can add members, the caller must be an owner/admin, or a chat-creator bot with `im:chat:operate_as_owner`.
+  - `delete` — 将用户或机器人移出群聊。Identity: supports `user` and `bot`; only group owner, admin, or creator bot can remove others; max 50 users or 5 bots per request.
   - `get` — 获取群成员列表。Identity: supports `user` and `bot`; the caller must be in the target chat and must belong to the same tenant for internal chats.
 
 ### messages
@@ -123,6 +124,7 @@ lark-cli im <resource> <method> [flags] # 调用 API
 | `chats.list` | `im:chat:read` |
 | `chats.update` | `im:chat:update` |
 | `chat.members.create` | `im:chat.members:write_only` |
+| `chat.members.delete` | `im:chat.members:write_only` |
 | `chat.members.get` | `im:chat.members:read` |
 | `messages.delete` | `im:message:recall` |
 | `messages.forward` | `im:message` |
