@@ -20,6 +20,7 @@ import (
 	lark "github.com/larksuite/oapi-sdk-go/v3"
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
 
+	"github.com/larksuite/cli/extension/fileio"
 	"github.com/larksuite/cli/internal/cmdutil"
 	"github.com/larksuite/cli/internal/core"
 	"github.com/larksuite/cli/internal/credential"
@@ -89,11 +90,11 @@ func newBotShortcutRuntime(t *testing.T, rt http.RoundTripper) *common.RuntimeCo
 	runtime := &common.RuntimeContext{
 		Config: cfg,
 		Factory: &cmdutil.Factory{
-			Config:     func() (*core.CliConfig, error) { return cfg, nil },
-			HttpClient: func() (*http.Client, error) { return httpClient, nil },
-			LarkClient: func() (*lark.Client, error) { return sdk, nil },
-			Credential: testCred,
-			FileIO:     &cmdutil.LocalFileIO{},
+			Config:         func() (*core.CliConfig, error) { return cfg, nil },
+			HttpClient:     func() (*http.Client, error) { return httpClient, nil },
+			LarkClient:     func() (*lark.Client, error) { return sdk, nil },
+			Credential:     testCred,
+			FileIOProvider: fileio.GetProvider(),
 			IOStreams: &cmdutil.IOStreams{
 				Out:    &bytes.Buffer{},
 				ErrOut: &bytes.Buffer{},
@@ -416,7 +417,7 @@ func TestUploadFileToIMSizeLimit(t *testing.T) {
 func TestResolveMediaContentWrapsUploadError(t *testing.T) {
 	runtime := &common.RuntimeContext{
 		Factory: &cmdutil.Factory{
-			FileIO: &cmdutil.LocalFileIO{},
+			FileIOProvider: fileio.GetProvider(),
 			IOStreams: &cmdutil.IOStreams{
 				Out:    &bytes.Buffer{},
 				ErrOut: &bytes.Buffer{},

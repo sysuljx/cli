@@ -13,6 +13,7 @@ import (
 	lark "github.com/larksuite/oapi-sdk-go/v3"
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
 
+	"github.com/larksuite/cli/extension/fileio"
 	"github.com/larksuite/cli/internal/core"
 	"github.com/larksuite/cli/internal/credential"
 	"github.com/larksuite/cli/internal/httpmock"
@@ -63,13 +64,13 @@ func TestFactory(t *testing.T, config *core.CliConfig) (*Factory, *bytes.Buffer,
 	)
 
 	f := &Factory{
-		Config:     func() (*core.CliConfig, error) { return config, nil },
-		HttpClient: func() (*http.Client, error) { return mockClient, nil },
-		LarkClient: func() (*lark.Client, error) { return testLarkClient, nil },
-		IOStreams:  &IOStreams{In: nil, Out: stdoutBuf, ErrOut: stderrBuf},
-		Keychain:   &noopKeychain{},
-		Credential: testCred,
-		FileIO:     &LocalFileIO{},
+		Config:         func() (*core.CliConfig, error) { return config, nil },
+		HttpClient:     func() (*http.Client, error) { return mockClient, nil },
+		LarkClient:     func() (*lark.Client, error) { return testLarkClient, nil },
+		IOStreams:      &IOStreams{In: nil, Out: stdoutBuf, ErrOut: stderrBuf},
+		Keychain:       &noopKeychain{},
+		Credential:     testCred,
+		FileIOProvider: fileio.GetProvider(),
 	}
 	return f, stdoutBuf, stderrBuf, reg
 }

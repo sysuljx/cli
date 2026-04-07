@@ -42,7 +42,16 @@ type Factory struct {
 
 	Credential *credential.CredentialProvider
 
-	FileIO fileio.FileIO // file transfer abstraction (default: local filesystem)
+	FileIOProvider fileio.Provider // file transfer provider (default: local filesystem)
+}
+
+// ResolveFileIO resolves a FileIO instance using the current execution context.
+// The provider controls whether the returned instance is fresh or cached.
+func (f *Factory) ResolveFileIO(ctx context.Context) fileio.FileIO {
+	if f == nil || f.FileIOProvider == nil {
+		return nil
+	}
+	return f.FileIOProvider.ResolveFileIO(ctx)
 }
 
 // ResolveAs returns the effective identity type.

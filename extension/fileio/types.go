@@ -19,7 +19,7 @@ type Provider interface {
 // FileIO abstracts file transfer operations for CLI commands.
 // The default implementation operates on the local filesystem with
 // path validation, directory creation, and atomic writes.
-// Inject a custom implementation via Factory.FileIO to replace
+// Inject a custom implementation via Factory.FileIOProvider to replace
 // file transfer behavior (e.g. streaming in server mode).
 type FileIO interface {
 	// Open opens a file for reading (upload, attachment, template scenarios).

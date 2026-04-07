@@ -45,10 +45,8 @@ func NewDefault(inv InvocationContext) *Factory {
 		IsTerminal: term.IsTerminal(int(os.Stdin.Fd())),
 	}
 
-	// Phase 0: FileIO (no dependency)
-	if p := fileio.GetProvider(); p != nil {
-		f.FileIO = p.ResolveFileIO(context.Background())
-	}
+	// Phase 0: FileIO provider (no dependency)
+	f.FileIOProvider = fileio.GetProvider()
 
 	// Phase 1: HttpClient (no credential dependency)
 	f.HttpClient = cachedHttpClientFunc()

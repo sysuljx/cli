@@ -250,7 +250,7 @@ func serviceMethodRun(opts *ServiceMethodOptions) error {
 		JqExpr:     opts.JqExpr,
 		Out:        out,
 		ErrOut:     f.IOStreams.ErrOut,
-		FileIO:     f.FileIO,
+		FileIO:     f.ResolveFileIO(opts.Ctx),
 		CheckError: checkErr,
 	})
 }

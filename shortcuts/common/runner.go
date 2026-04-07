@@ -297,9 +297,12 @@ func (ctx *RuntimeContext) IO() *cmdutil.IOStreams {
 	return ctx.Factory.IOStreams
 }
 
-// FileIO returns the FileIO from the Factory.
+// FileIO resolves the FileIO using the current execution context.
 func (ctx *RuntimeContext) FileIO() fileio.FileIO {
-	return ctx.Factory.FileIO
+	if ctx == nil || ctx.Factory == nil {
+		return nil
+	}
+	return ctx.Factory.ResolveFileIO(ctx.ctx)
 }
 
 // ── Output helpers ──

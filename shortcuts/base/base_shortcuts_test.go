@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/larksuite/cli/extension/fileio"
 	"github.com/larksuite/cli/internal/cmdutil"
 	"github.com/larksuite/cli/internal/core"
 	"github.com/larksuite/cli/shortcuts/common"
@@ -43,7 +44,7 @@ func newBaseTestRuntime(stringFlags map[string]string, boolFlags map[string]bool
 	return &common.RuntimeContext{
 		Cmd:     cmd,
 		Config:  &core.CliConfig{UserOpenId: "ou_test"},
-		Factory: &cmdutil.Factory{FileIO: &cmdutil.LocalFileIO{}},
+		Factory: &cmdutil.Factory{FileIOProvider: fileio.GetProvider()},
 	}
 }
 
