@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"slices"
 	"strings"
 
@@ -310,6 +311,17 @@ func (ctx *RuntimeContext) FileIO() fileio.FileIO {
 			c = ctx.ctx
 		}
 		return p.ResolveFileIO(c)
+	}
+	return nil
+}
+
+// ValidatePath checks that path is a valid relative path within the working
+// directory (via FileIO.Stat). Returns nil if the path is valid or does not
+// exist yet; returns an error only for illegal paths (absolute, traversal,
+// symlink escape, control chars).
+func (ctx *RuntimeContext) ValidatePath(path string) error {
+	if _, err := ctx.FileIO().Stat(path); err != nil && !os.IsNotExist(err) {
+		return err
 	}
 	return nil
 }

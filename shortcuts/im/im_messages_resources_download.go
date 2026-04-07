@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -55,9 +54,8 @@ var ImMessagesResourcesDownload = common.Shortcut{
 		if err != nil {
 			return output.ErrValidation("%s", err)
 		}
-		// Early path validation via FileIO.Stat
-		if _, statErr := runtime.FileIO().Stat(relPath); statErr != nil && !os.IsNotExist(statErr) {
-			return output.ErrValidation("unsafe output path: %s", statErr)
+		if err := runtime.ValidatePath(relPath); err != nil {
+			return output.ErrValidation("unsafe output path: %s", err)
 		}
 		return nil
 	},

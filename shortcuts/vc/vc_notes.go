@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -421,9 +420,9 @@ var VCNotes = common.Shortcut{
 				}
 			}
 		}
-		// output-dir 路径安全校验（FileIO.Stat 内部做 SafeInputPath）
+		// output-dir 路径安全校验
 		if outDir := runtime.Str("output-dir"); outDir != "" {
-			if _, err := runtime.FileIO().Stat(outDir); err != nil && !os.IsNotExist(err) {
+			if err := runtime.ValidatePath(outDir); err != nil {
 				return err
 			}
 		}

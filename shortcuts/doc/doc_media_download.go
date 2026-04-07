@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -67,9 +66,8 @@ var DocMediaDownload = common.Shortcut{
 		if err := validate.ResourceName(token, "--token"); err != nil {
 			return output.ErrValidation("%s", err)
 		}
-		// Early path validation via FileIO.Stat
-		if _, statErr := runtime.FileIO().Stat(outputPath); statErr != nil && !os.IsNotExist(statErr) {
-			return output.ErrValidation("unsafe output path: %s", statErr)
+		if err := runtime.ValidatePath(outputPath); err != nil {
+			return output.ErrValidation("unsafe output path: %s", err)
 		}
 
 		fmt.Fprintf(runtime.IO().ErrOut, "Downloading: %s %s\n", mediaType, common.MaskToken(token))
