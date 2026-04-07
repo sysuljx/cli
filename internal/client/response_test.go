@@ -354,4 +354,3 @@ func TestHandleResponse_403JSON_CheckLarkResponse(t *testing.T) {
 		t.Errorf("expected lark error code in message, got: %s", err.Error())
 	}
 }
-

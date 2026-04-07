@@ -14,8 +14,8 @@ import (
 
 	"github.com/larksuite/cli/internal/cmdutil"
 	"github.com/larksuite/cli/internal/httpmock"
-	"github.com/larksuite/cli/internal/vfs/localfileio"
 	"github.com/larksuite/cli/internal/output"
+	"github.com/larksuite/cli/internal/vfs/localfileio"
 )
 
 func TestValidateDriveExportSpec(t *testing.T) {

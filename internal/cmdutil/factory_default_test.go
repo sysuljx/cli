@@ -10,11 +10,11 @@ import (
 
 	_ "github.com/larksuite/cli/extension/credential/env"
 	"github.com/larksuite/cli/extension/fileio"
-	"github.com/larksuite/cli/internal/vfs/localfileio"
 	internalauth "github.com/larksuite/cli/internal/auth"
 	"github.com/larksuite/cli/internal/core"
 	"github.com/larksuite/cli/internal/credential"
 	"github.com/larksuite/cli/internal/envvars"
+	"github.com/larksuite/cli/internal/vfs/localfileio"
 )
 
 type countingFileIOProvider struct {

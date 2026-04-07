@@ -167,8 +167,6 @@ func TestSafeOutputPath_DeepNonExistentPathStaysInCWD(t *testing.T) {
 	}
 }
 
-
-
 func TestSafeUploadPath_AllowsTempFileAbsolutePath(t *testing.T) {
 	// GIVEN: a real temp file (absolute path under os.TempDir())
 	f, err := os.CreateTemp("", "upload-test-*.bin")

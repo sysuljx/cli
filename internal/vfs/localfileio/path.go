@@ -32,7 +32,6 @@ func safeInputPath(path string) (string, error) {
 	return safePath(path, "--file")
 }
 
-
 // safePath is the shared implementation for SafeOutputPath and safeInputPath.
 func safePath(raw, flagName string) (string, error) {
 	if err := rejectControlChars(raw, flagName); err != nil {

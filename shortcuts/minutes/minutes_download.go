@@ -228,9 +228,9 @@ type downloadResult struct {
 }
 
 type downloadOpts struct {
-	fio        fileio.FileIO   // file I/O abstraction
-	outputPath string          // explicit output file path (single mode only)
-	outputDir  string          // output directory (batch mode)
+	fio        fileio.FileIO // file I/O abstraction
+	outputPath string        // explicit output file path (single mode only)
+	outputDir  string        // output directory (batch mode)
 	overwrite  bool
 	usedNames  map[string]bool // tracks used filenames to deduplicate in batch mode
 }

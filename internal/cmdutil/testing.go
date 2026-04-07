@@ -17,6 +17,7 @@ import (
 	"github.com/larksuite/cli/internal/core"
 	"github.com/larksuite/cli/internal/credential"
 	"github.com/larksuite/cli/internal/httpmock"
+	"github.com/larksuite/cli/internal/vfs"
 )
 
 // noopKeychain is a no-op KeychainAccess for tests that don't need keychain.
@@ -93,14 +94,14 @@ func (a *testDefaultAcct) ResolveAccount(ctx context.Context) (*credential.Accou
 // Not compatible with t.Parallel() — os.Chdir is process-wide.
 func TestChdir(t *testing.T, dir string) {
 	t.Helper()
-	orig, err := os.Getwd()
+	orig, err := vfs.Getwd()
 	if err != nil {
 		t.Fatalf("Getwd: %v", err)
 	}
-	if err := os.Chdir(dir); err != nil {
+	if err := os.Chdir(dir); err != nil { //nolint:forbidigo // no vfs.Chdir yet; test-only, process-wide chdir
 		t.Fatalf("Chdir(%s): %v", dir, err)
 	}
-	t.Cleanup(func() { os.Chdir(orig) })
+	t.Cleanup(func() { os.Chdir(orig) }) //nolint:forbidigo // matching restore
 }
 
 type testDefaultToken struct{}
