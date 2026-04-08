@@ -37,7 +37,7 @@ lark-cli base +record-search \
 
 **HTTP 方法和路径：**
 
-```
+```http
 POST /open-apis/base/v3/bases/:base_token/tables/:table_id/records/search
 ```
 

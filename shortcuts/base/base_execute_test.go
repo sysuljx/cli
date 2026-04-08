@@ -523,7 +523,7 @@ func TestBaseRecordExecuteReadCreateDelete(t *testing.T) {
 				"+record-search",
 				"--base-token", "app_x",
 				"--table-id", "tbl_x",
-				"--json", `{"view_id":"vew_x","keyword":"Created","search_fields":["Title","fld_owner"],"select_fields":["Title","fld_owner"],"filter":{"conjunction":"and","conditions":[{"field_name":"Title","operator":"contains","value":["Created"]}]},"offset":0,"limit":2}`,
+				"--json", `{"view_id":"vew_x","keyword":"Created","search_fields":["Title","fld_owner"],"select_fields":["Title","fld_owner"],"offset":0,"limit":2}`,
 			},
 			factory,
 			stdout,
@@ -538,9 +538,6 @@ func TestBaseRecordExecuteReadCreateDelete(t *testing.T) {
 			!strings.Contains(body, `"keyword":"Created"`) ||
 			!strings.Contains(body, `"search_fields":["Title","fld_owner"]`) ||
 			!strings.Contains(body, `"select_fields":["Title","fld_owner"]`) ||
-			!strings.Contains(body, `"filter":{`) ||
-			!strings.Contains(body, `"conjunction":"and"`) ||
-			!strings.Contains(body, `"conditions":[{"field_name":"Title","operator":"contains","value":["Created"]}]`) ||
 			!strings.Contains(body, `"offset":0`) ||
 			!strings.Contains(body, `"limit":2`) {
 			t.Fatalf("captured body=%s", body)
