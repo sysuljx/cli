@@ -471,52 +471,6 @@ func TestBaseRecordExecuteReadCreateDelete(t *testing.T) {
 		}
 	})
 
-	t.Run("list with fields and view", func(t *testing.T) {
-		factory, stdout, reg := newExecuteFactory(t)
-		reg.Register(&httpmock.Stub{
-			Method: "GET",
-			URL:    "field_id=Name&field_id=Age&limit=1&offset=0&view_id=vew_x",
-			Body: map[string]interface{}{
-				"code": 0,
-				"data": map[string]interface{}{
-					"fields":         []interface{}{"Name", "Age"},
-					"record_id_list": []interface{}{"rec_fields"},
-					"data":           []interface{}{[]interface{}{"Alice", 18}},
-					"total":          1,
-				},
-			},
-		})
-		if err := runShortcut(t, BaseRecordList, []string{"+record-list", "--base-token", "app_x", "--table-id", "tbl_x", "--view-id", "vew_x", "--limit", "1", "--field-id", "Name", "--field-id", "Age"}, factory, stdout); err != nil {
-			t.Fatalf("err=%v", err)
-		}
-		if got := stdout.String(); !strings.Contains(got, `"rec_fields"`) || !strings.Contains(got, `"Alice"`) {
-			t.Fatalf("stdout=%s", got)
-		}
-	})
-
-	t.Run("list with comma field", func(t *testing.T) {
-		factory, stdout, reg := newExecuteFactory(t)
-		reg.Register(&httpmock.Stub{
-			Method: "GET",
-			URL:    "field_id=A%2CB&field_id=C&limit=1&offset=0",
-			Body: map[string]interface{}{
-				"code": 0,
-				"data": map[string]interface{}{
-					"fields":         []interface{}{"A,B", "C"},
-					"record_id_list": []interface{}{"rec_json_fields"},
-					"data":           []interface{}{[]interface{}{"value-1", "value-2"}},
-					"total":          1,
-				},
-			},
-		})
-		if err := runShortcut(t, BaseRecordList, []string{"+record-list", "--base-token", "app_x", "--table-id", "tbl_x", "--limit", "1", "--field-id", "A,B", "--field-id", "C"}, factory, stdout); err != nil {
-			t.Fatalf("err=%v", err)
-		}
-		if got := stdout.String(); !strings.Contains(got, `"A,B"`) || !strings.Contains(got, `"rec_json_fields"`) {
-			t.Fatalf("stdout=%s", got)
-		}
-	})
-
 	t.Run("list new shape", func(t *testing.T) {
 		factory, stdout, reg := newExecuteFactory(t)
 		reg.Register(&httpmock.Stub{
@@ -540,19 +494,56 @@ func TestBaseRecordExecuteReadCreateDelete(t *testing.T) {
 		}
 	})
 
-	t.Run("list legacy fields flag rejected", func(t *testing.T) {
-		factory, stdout, _ := newExecuteFactory(t)
-		err := runShortcut(t, BaseRecordList, []string{"+record-list", "--base-token", "app_x", "--table-id", "tbl_x", "--fields", "Name"}, factory, stdout)
-		if err == nil || !strings.Contains(err.Error(), "unknown flag: --fields") {
+	t.Run("search", func(t *testing.T) {
+		factory, stdout, reg := newExecuteFactory(t)
+		searchStub := &httpmock.Stub{
+			Method: "POST",
+			URL:    "/open-apis/base/v3/bases/app_x/tables/tbl_x/records/search",
+			Body: map[string]interface{}{
+				"code": 0,
+				"data": map[string]interface{}{
+					"fields":         []interface{}{"Title", "Owner"},
+					"field_id_list":  []interface{}{"fld_title", "fld_owner"},
+					"record_id_list": []interface{}{"rec_1"},
+					"data":           []interface{}{[]interface{}{"Created by AI", "Alice"}},
+					"has_more":       false,
+					"query_context": map[string]interface{}{
+						"record_scope": "filtered_records",
+						"field_scope":  "selected_fields",
+						"search_scope": "fld_title(Title)",
+					},
+				},
+			},
+		}
+		reg.Register(searchStub)
+		if err := runShortcut(
+			t,
+			BaseRecordSearch,
+			[]string{
+				"+record-search",
+				"--base-token", "app_x",
+				"--table-id", "tbl_x",
+				"--json", `{"view_id":"vew_x","keyword":"Created","search_fields":["Title","fld_owner"],"select_fields":["Title","fld_owner"],"filter":{"conjunction":"and","conditions":[{"field_name":"Title","operator":"contains","value":["Created"]}]},"offset":0,"limit":2}`,
+			},
+			factory,
+			stdout,
+		); err != nil {
 			t.Fatalf("err=%v", err)
 		}
-	})
-
-	t.Run("list legacy fields flag rejected in dry-run", func(t *testing.T) {
-		factory, stdout, _ := newExecuteFactory(t)
-		err := runShortcut(t, BaseRecordList, []string{"+record-list", "--base-token", "app_x", "--table-id", "tbl_x", "--fields", "Name", "--dry-run"}, factory, stdout)
-		if err == nil || !strings.Contains(err.Error(), "unknown flag: --fields") {
-			t.Fatalf("err=%v", err)
+		if got := stdout.String(); !strings.Contains(got, `"record_id_list"`) || !strings.Contains(got, `"rec_1"`) || !strings.Contains(got, `"query_context"`) {
+			t.Fatalf("stdout=%s", got)
+		}
+		body := string(searchStub.CapturedBody)
+		if !strings.Contains(body, `"view_id":"vew_x"`) ||
+			!strings.Contains(body, `"keyword":"Created"`) ||
+			!strings.Contains(body, `"search_fields":["Title","fld_owner"]`) ||
+			!strings.Contains(body, `"select_fields":["Title","fld_owner"]`) ||
+			!strings.Contains(body, `"filter":{`) ||
+			!strings.Contains(body, `"conjunction":"and"`) ||
+			!strings.Contains(body, `"conditions":[{"field_name":"Title","operator":"contains","value":["Created"]}]`) ||
+			!strings.Contains(body, `"offset":0`) ||
+			!strings.Contains(body, `"limit":2`) {
+			t.Fatalf("captured body=%s", body)
 		}
 	})
 
@@ -574,50 +565,6 @@ func TestBaseRecordExecuteReadCreateDelete(t *testing.T) {
 			t.Fatalf("err=%v", err)
 		}
 		if got := stdout.String(); !strings.Contains(got, `"record_ids"`) || !strings.Contains(got, `"Name"`) || strings.Contains(got, `"raw"`) {
-			t.Fatalf("stdout=%s", got)
-		}
-	})
-
-	t.Run("get with fields", func(t *testing.T) {
-		factory, stdout, reg := newExecuteFactory(t)
-		reg.Register(&httpmock.Stub{
-			Method: "GET",
-			URL:    "/open-apis/base/v3/bases/app_x/tables/tbl_x/records/rec_fields?field=Name&field=Age",
-			Body: map[string]interface{}{
-				"code": 0,
-				"data": map[string]interface{}{
-					"fields":         []interface{}{"Name", "Age"},
-					"record_id_list": []interface{}{"rec_fields"},
-					"data":           []interface{}{[]interface{}{"Alice", 18}},
-				},
-			},
-		})
-		if err := runShortcut(t, BaseRecordGet, []string{"+record-get", "--base-token", "app_x", "--table-id", "tbl_x", "--record-id", "rec_fields", "--field-id", "Name", "--field-id", "Age"}, factory, stdout); err != nil {
-			t.Fatalf("err=%v", err)
-		}
-		if got := stdout.String(); !strings.Contains(got, `"rec_fields"`) || !strings.Contains(got, `"Alice"`) {
-			t.Fatalf("stdout=%s", got)
-		}
-	})
-
-	t.Run("get with comma field", func(t *testing.T) {
-		factory, stdout, reg := newExecuteFactory(t)
-		reg.Register(&httpmock.Stub{
-			Method: "GET",
-			URL:    "/open-apis/base/v3/bases/app_x/tables/tbl_x/records/rec_comma?field=A%2CB",
-			Body: map[string]interface{}{
-				"code": 0,
-				"data": map[string]interface{}{
-					"fields":         []interface{}{"A,B"},
-					"record_id_list": []interface{}{"rec_comma"},
-					"data":           []interface{}{[]interface{}{"value-1"}},
-				},
-			},
-		})
-		if err := runShortcut(t, BaseRecordGet, []string{"+record-get", "--base-token", "app_x", "--table-id", "tbl_x", "--record-id", "rec_comma", "--field-id", "A,B"}, factory, stdout); err != nil {
-			t.Fatalf("err=%v", err)
-		}
-		if got := stdout.String(); !strings.Contains(got, `"A,B"`) || !strings.Contains(got, `"rec_comma"`) {
 			t.Fatalf("stdout=%s", got)
 		}
 	})
