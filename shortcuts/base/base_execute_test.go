@@ -552,7 +552,7 @@ func TestBaseRecordExecuteReadCreateDelete(t *testing.T) {
 		}
 	})
 
-	t.Run("batch add", func(t *testing.T) {
+	t.Run("batch create", func(t *testing.T) {
 		factory, stdout, reg := newExecuteFactory(t)
 		reg.Register(&httpmock.Stub{
 			Method: "POST",
@@ -566,7 +566,7 @@ func TestBaseRecordExecuteReadCreateDelete(t *testing.T) {
 				},
 			},
 		})
-		if err := runShortcut(t, BaseRecordBatchAdd, []string{"+record-batch-add", "--base-token", "app_x", "--table-id", "tbl_x", "--json", `{"fields":["Name"],"rows":[["Alice"],["Bob"]]}`}, factory, stdout); err != nil {
+		if err := runShortcut(t, BaseRecordBatchCreate, []string{"+record-batch-create", "--base-token", "app_x", "--table-id", "tbl_x", "--json", `{"fields":["Name"],"rows":[["Alice"],["Bob"]]}`}, factory, stdout); err != nil {
 			t.Fatalf("err=%v", err)
 		}
 		if got := stdout.String(); !strings.Contains(got, `"record_id_list"`) || !strings.Contains(got, `"rec_1"`) || !strings.Contains(got, `"Alice"`) {
@@ -574,7 +574,7 @@ func TestBaseRecordExecuteReadCreateDelete(t *testing.T) {
 		}
 	})
 
-	t.Run("batch set", func(t *testing.T) {
+	t.Run("batch update", func(t *testing.T) {
 		factory, stdout, reg := newExecuteFactory(t)
 		reg.Register(&httpmock.Stub{
 			Method: "PATCH",
@@ -588,7 +588,7 @@ func TestBaseRecordExecuteReadCreateDelete(t *testing.T) {
 				},
 			},
 		})
-		if err := runShortcut(t, BaseRecordBatchSet, []string{"+record-batch-set", "--base-token", "app_x", "--table-id", "tbl_x", "--json", `{"record_id_list":["rec_1"],"patch":{"Status":"Done"}}`}, factory, stdout); err != nil {
+		if err := runShortcut(t, BaseRecordBatchUpdate, []string{"+record-batch-update", "--base-token", "app_x", "--table-id", "tbl_x", "--json", `{"record_id_list":["rec_1"],"patch":{"Status":"Done"}}`}, factory, stdout); err != nil {
 			t.Fatalf("err=%v", err)
 		}
 		if got := stdout.String(); !strings.Contains(got, `"record_id_list"`) || !strings.Contains(got, `"update"`) || !strings.Contains(got, `"Done"`) {
@@ -596,7 +596,7 @@ func TestBaseRecordExecuteReadCreateDelete(t *testing.T) {
 		}
 	})
 
-	t.Run("batch set passthrough", func(t *testing.T) {
+	t.Run("batch update passthrough", func(t *testing.T) {
 		factory, stdout, reg := newExecuteFactory(t)
 		updateStub := &httpmock.Stub{
 			Method: "PATCH",
@@ -609,7 +609,7 @@ func TestBaseRecordExecuteReadCreateDelete(t *testing.T) {
 			},
 		}
 		reg.Register(updateStub)
-		if err := runShortcut(t, BaseRecordBatchSet, []string{"+record-batch-set", "--base-token", "app_x", "--table-id", "tbl_x", "--json", `{"record_id_list":["rec_1"],"patch":{"Name":"Alice","Status":"Done"}}`}, factory, stdout); err != nil {
+		if err := runShortcut(t, BaseRecordBatchUpdate, []string{"+record-batch-update", "--base-token", "app_x", "--table-id", "tbl_x", "--json", `{"record_id_list":["rec_1"],"patch":{"Name":"Alice","Status":"Done"}}`}, factory, stdout); err != nil {
 			t.Fatalf("err=%v", err)
 		}
 		if got := stdout.String(); !strings.Contains(got, `"record_id_list"`) || !strings.Contains(got, `"rec_1"`) {

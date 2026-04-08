@@ -9,23 +9,23 @@ import (
 	"github.com/larksuite/cli/shortcuts/common"
 )
 
-var BaseRecordBatchSet = common.Shortcut{
+var BaseRecordBatchCreate = common.Shortcut{
 	Service:     "base",
-	Command:     "+record-batch-set",
-	Description: "Batch set records",
+	Command:     "+record-batch-create",
+	Description: "Batch create records",
 	Risk:        "write",
-	Scopes:      []string{"base:record:update"},
+	Scopes:      []string{"base:record:create"},
 	AuthTypes:   authTypes(),
 	Flags: []common.Flag{
 		baseTokenFlag(true),
 		tableRefFlag(true),
-		{Name: "json", Desc: "batch set JSON object, passed through as request body, e.g. {\"record_id_list\":[\"rec_xxx\"],\"patch\":{\"field_id_or_name\":\"value\"}}", Required: true},
+		{Name: "json", Desc: "batch create JSON object, e.g. {\"fields\":[],\"rows\":[]}", Required: true},
 	},
 	Validate: func(ctx context.Context, runtime *common.RuntimeContext) error {
 		return validateRecordJSON(runtime)
 	},
-	DryRun: dryRunRecordBatchSet,
+	DryRun: dryRunRecordBatchCreate,
 	Execute: func(ctx context.Context, runtime *common.RuntimeContext) error {
-		return executeRecordBatchSet(runtime)
+		return executeRecordBatchCreate(runtime)
 	},
 }

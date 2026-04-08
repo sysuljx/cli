@@ -9,23 +9,23 @@ import (
 	"github.com/larksuite/cli/shortcuts/common"
 )
 
-var BaseRecordBatchAdd = common.Shortcut{
+var BaseRecordBatchUpdate = common.Shortcut{
 	Service:     "base",
-	Command:     "+record-batch-add",
-	Description: "Batch add records",
+	Command:     "+record-batch-update",
+	Description: "Batch update records",
 	Risk:        "write",
-	Scopes:      []string{"base:record:create"},
+	Scopes:      []string{"base:record:update"},
 	AuthTypes:   authTypes(),
 	Flags: []common.Flag{
 		baseTokenFlag(true),
 		tableRefFlag(true),
-		{Name: "json", Desc: "batch add JSON object, e.g. {\"fields\":[],\"rows\":[]}", Required: true},
+		{Name: "json", Desc: "batch update JSON object, passed through as request body, e.g. {\"record_id_list\":[\"recXXX\"],\"patch\":{\"field_id_or_name\":\"value\"}}", Required: true},
 	},
 	Validate: func(ctx context.Context, runtime *common.RuntimeContext) error {
 		return validateRecordJSON(runtime)
 	},
-	DryRun: dryRunRecordBatchAdd,
+	DryRun: dryRunRecordBatchUpdate,
 	Execute: func(ctx context.Context, runtime *common.RuntimeContext) error {
-		return executeRecordBatchAdd(runtime)
+		return executeRecordBatchUpdate(runtime)
 	},
 }
