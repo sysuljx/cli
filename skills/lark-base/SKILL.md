@@ -267,9 +267,9 @@ https://{domain}/base/{base-token}?table={table-id}&view={view-id}
 
 ## 参考文档
 
-- [lark-base-shortcut-field-properties.md](references/lark-base-shortcut-field-properties.md) — `+field-create/+field-update` JSON 规范（推荐）
+- [lark-base-shortcut-field-properties.md](references/lark-base-shortcut-field-properties.md) — `+field-create/+field-update` 调用前必看，各类型 field JSON 规范
 - [role-config.md](references/role-config.md) — 角色权限配置详解
-- [lark-base-shortcut-record-value.md](references/lark-base-shortcut-record-value.md) — `+record-upsert` 值格式规范（推荐）
+- [lark-base-shortcut-record-value.md](references/lark-base-shortcut-record-value.md) — record 写入（`+record-upsert / +record-batch-add / +record-batch-set`）调用前必看，各类型 record JSON 规范
 - [lark-base-record-batch-add.md](references/lark-base-record-batch-add.md) — `+record-batch-add` 用法与 `--json` 结构
 - [lark-base-record-batch-set.md](references/lark-base-record-batch-set.md) — `+record-batch-set` 用法与 `--json` 结构
 - [formula-field-guide.md](references/formula-field-guide.md) — formula 字段写法、函数约束、CurrentValue 规则、跨表计算模式（强烈推荐）
