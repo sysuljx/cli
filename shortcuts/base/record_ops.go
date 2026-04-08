@@ -75,6 +75,24 @@ func dryRunRecordUpsert(_ context.Context, runtime *common.RuntimeContext) *comm
 		Set("table_id", baseTableID(runtime))
 }
 
+func dryRunRecordBatchCreate(_ context.Context, runtime *common.RuntimeContext) *common.DryRunAPI {
+	body, _ := parseJSONObject(runtime.Str("json"), "json")
+	return common.NewDryRunAPI().
+		POST("/open-apis/base/v3/bases/:base_token/tables/:table_id/records/batch").
+		Body(body).
+		Set("base_token", runtime.Str("base-token")).
+		Set("table_id", baseTableID(runtime))
+}
+
+func dryRunRecordBatchUpdate(_ context.Context, runtime *common.RuntimeContext) *common.DryRunAPI {
+	body, _ := parseJSONObject(runtime.Str("json"), "json")
+	return common.NewDryRunAPI().
+		PATCH("/open-apis/base/v3/bases/:base_token/tables/:table_id/records/batch").
+		Body(body).
+		Set("base_token", runtime.Str("base-token")).
+		Set("table_id", baseTableID(runtime))
+}
+
 func dryRunRecordDelete(_ context.Context, runtime *common.RuntimeContext) *common.DryRunAPI {
 	return common.NewDryRunAPI().
 		DELETE("/open-apis/base/v3/bases/:base_token/tables/:table_id/records/:record_id").
@@ -174,6 +192,34 @@ func executeRecordUpsert(runtime *common.RuntimeContext) error {
 		return err
 	}
 	runtime.Out(map[string]interface{}{"record": data, "created": true}, nil)
+	return nil
+}
+
+func executeRecordBatchCreate(runtime *common.RuntimeContext) error {
+	body, err := parseJSONObject(runtime.Str("json"), "json")
+	if err != nil {
+		return err
+	}
+	result, err := baseV3Raw(runtime, "POST", baseV3Path("bases", runtime.Str("base-token"), "tables", baseTableID(runtime), "records", "batch"), nil, body)
+	data, err := handleBaseAPIResult(result, err, "batch create records")
+	if err != nil {
+		return err
+	}
+	runtime.Out(data, nil)
+	return nil
+}
+
+func executeRecordBatchUpdate(runtime *common.RuntimeContext) error {
+	body, err := parseJSONObject(runtime.Str("json"), "json")
+	if err != nil {
+		return err
+	}
+	result, err := baseV3Raw(runtime, "PATCH", baseV3Path("bases", runtime.Str("base-token"), "tables", baseTableID(runtime), "records", "batch"), nil, body)
+	data, err := handleBaseAPIResult(result, err, "batch update records")
+	if err != nil {
+		return err
+	}
+	runtime.Out(data, nil)
 	return nil
 }
 

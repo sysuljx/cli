@@ -158,9 +158,8 @@ func TestShortcutsCatalog(t *testing.T) {
 	want := []string{
 		"+table-list", "+table-get", "+table-create", "+table-update", "+table-delete",
 		"+field-list", "+field-get", "+field-create", "+field-update", "+field-delete", "+field-search-options",
-<<<<<<< HEAD
 		"+view-list", "+view-get", "+view-create", "+view-delete", "+view-get-filter", "+view-set-filter", "+view-get-visible-fields", "+view-set-visible-fields", "+view-get-group", "+view-set-group", "+view-get-sort", "+view-set-sort", "+view-get-timebar", "+view-set-timebar", "+view-get-card", "+view-set-card", "+view-rename",
-		"+record-list", "+record-search", "+record-get", "+record-upsert", "+record-upload-attachment", "+record-delete",
+		"+record-list", "+record-search", "+record-get", "+record-upsert", "+record-batch-create", "+record-batch-update", "+record-upload-attachment", "+record-delete",
 		"+record-history-list",
 		"+base-get", "+base-copy", "+base-create",
 		"+role-create", "+role-delete", "+role-update", "+role-list", "+role-get", "+advperm-enable", "+advperm-disable",
