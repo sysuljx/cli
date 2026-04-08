@@ -4,6 +4,11 @@
 
 批量新增记录。
 
+## 适用场景（重点）
+
+- 适合大量新增写入场景，例如导入 CSV / Excel、外部系统一次性灌入新数据。
+- 当输入是长表格或长文本数据时，先按 [lark-base-shortcut-record-value.md](lark-base-shortcut-record-value.md) 做字段映射和类型规范化，再组装 `fields + rows` 调用本命令写入。
+
 ## 推荐命令
 
 ```bash
@@ -29,11 +34,11 @@ lark-cli base +record-batch-add \
 POST /open-apis/base/v3/bases/:base_token/tables/:table_id/records/batch
 ```
 
-## `--json` Raw JSON Schema
+## `--json` 结构
 
-```json
-{"type":"object","properties":{"fields":{"type":"array","items":{"type":"string","minLength":1,"maxLength":100,"description":"Field id or name"},"minItems":1,"maxItems":200},"rows":{"type":"array","items":{"type":"array","items":{"anyOf":[{"anyOf":[{"type":"string","description":"text field cell, example: \"one string and [one url](https://foo.bar)\""},{"type":"number","description":"number field cell, can be any float64 value"},{"type":"array","items":{"type":"string","description":"option name"},"description":"select field cell, example: [\"option_1\", \"option_2\"]"},{"type":"string","description":"datetime field cell. accepts common datetime strings and timestamp-like values. Prefer \"YYYY-MM-DD HH:mm:ss\" in requests because it is the most stable format and matches the API output. Example: \"2026-01-01 19:30:00\""},{"type":"array","items":{"type":"object","properties":{"id":{"type":"string","description":"record id"}},"required":["id"],"additionalProperties":false},"description":"link field cell, example: [{\"id\": \"rec_123\"}]"},{"type":"array","items":{"type":"object","properties":{"id":{"type":"string","description":"user id"}},"required":["id"],"additionalProperties":false},"description":"user field cell, example: [{\"id\": \"ou_123\"}]"},{"type":"object","properties":{"lng":{"type":"number","description":"Longitude"},"lat":{"type":"number","description":"Latitude"}},"required":["lng","lat"],"additionalProperties":false,"description":"location field cell, example: {\"lng\": 113.94765, \"lat\": 22.528533}"},{"type":"boolean","description":"checkbox field cell"},{"type":"array","items":{"type":"object","properties":{"file_token":{"type":"string","minLength":0,"maxLength":50},"name":{"type":"string","minLength":1,"maxLength":255},"mime_type":{"type":"string","maxLength":255,"description":"deprecated field"},"size":{"type":"integer","minimum":0,"description":"deprecated field"},"image_width":{"type":"integer","minimum":0,"description":"deprecated field"},"image_height":{"type":"integer","minimum":0,"description":"deprecated field"},"deprecated_set_attachment":{"type":"boolean","description":"deprecated field"}},"required":["file_token","name"],"additionalProperties":false},"description":"attachment field cell. temporary compatibility for attachment writes."},{"type":"null"}]},{"type":"null"}]}},"minItems":1,"maxItems":200}},"required":["fields","rows"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"}
-```
+- 对象形态：`{"fields":[...],"rows":[...]}`。
+- `fields`：字段 id 或字段名数组。
+- `rows`：二维数组，每一行按 `fields` 的同序列给值。
 
 ## 返回重点
 
@@ -47,7 +52,9 @@ POST /open-apis/base/v3/bases/:base_token/tables/:table_id/records/batch
 ## 坑点
 
 - ⚠️ `--json` 必须是对象。
+- ⚠️ 写 `rows` 前必须先阅读 [lark-base-shortcut-record-value.md](lark-base-shortcut-record-value.md)，按字段类型填值，禁止按自然语言猜测 value 结构。
 - ⚠️ `fields` 与 `rows` 列顺序必须一一对应。
+- ⚠️ 单次最多 200 行，超出需分批写入。
 
 ## 参考
 

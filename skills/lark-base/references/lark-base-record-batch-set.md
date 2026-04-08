@@ -33,11 +33,11 @@ lark-cli base +record-batch-set \
 PATCH /open-apis/base/v3/bases/:base_token/tables/:table_id/records/batch
 ```
 
-## `--json` Raw JSON Schema
+## `--json` 结构
 
-```json
-{"type":"object","properties":{"record_id_list":{"type":"array","items":{"type":"string"},"minItems":1,"maxItems":200},"patch":{"type":"object"}},"required":["record_id_list","patch"],"additionalProperties":true,"$schema":"http://json-schema.org/draft-07/schema#"}
-```
+- 对象形态：`{"record_id_list":[...],"patch":{...}}`。
+- `record_id_list`：要更新的记录 ID 列表（单次最多 200 条）。
+- `patch`：同一份字段更新对象，会应用到 `record_id_list` 内所有记录。
 
 ## 返回重点
 
