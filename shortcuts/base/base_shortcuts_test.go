@@ -279,7 +279,6 @@ func TestBaseTableValidate(t *testing.T) {
 }
 
 func TestBaseRecordValidate(t *testing.T) {
-	ctx := context.Background()
 	if BaseRecordList.Validate != nil {
 		t.Fatalf("record list validate should be nil for repeatable --field-id")
 	}
@@ -289,11 +288,8 @@ func TestBaseRecordValidate(t *testing.T) {
 	if BaseRecordGet.Validate != nil {
 		t.Fatalf("record get validate should be nil")
 	}
-	if err := BaseRecordUpsert.Validate(ctx, newBaseTestRuntime(map[string]string{"base-token": "b", "table-id": "tbl_1", "json": `{"Name":"A"}`}, nil, nil)); err != nil {
-		t.Fatalf("upsert validate err=%v", err)
-	}
-	if err := BaseRecordUpsert.Validate(ctx, newBaseTestRuntime(map[string]string{"base-token": "b", "table-id": "tbl_1", "json": "{"}, nil, nil)); err != nil {
-		t.Fatalf("invalid record json should bypass CLI validate, err=%v", err)
+	if BaseRecordUpsert.Validate != nil {
+		t.Fatalf("record upsert validate should be nil for API passthrough")
 	}
 }
 

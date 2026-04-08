@@ -83,7 +83,7 @@ func TestDryRunRecordOps(t *testing.T) {
 		map[string]string{
 			"base-token": "app_x",
 			"table-id":   "tbl_1",
-			"json":       `{"view_id":"viw_1","keyword":"Created","search_fields":["Title","fld_owner"],"select_fields":["Title","fld_owner"],"filter":{"conjunction":"and","conditions":[]},"offset":-1,"limit":500}`,
+			"json":       `{"view_id":"viw_1","keyword":"Created","search_fields":["Title","fld_owner"],"select_fields":["Title","fld_owner"],"offset":-1,"limit":500}`,
 		},
 		nil, nil,
 	)
@@ -95,9 +95,6 @@ func TestDryRunRecordOps(t *testing.T) {
 		`"keyword":"Created"`,
 		`"search_fields":["Title","fld_owner"]`,
 		`"select_fields":["Title","fld_owner"]`,
-		`"filter":{`,
-		`"conjunction":"and"`,
-		`"conditions":[]`,
 		`"offset":-1`,
 		`"limit":500`,
 	)

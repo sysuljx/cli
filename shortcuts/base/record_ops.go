@@ -42,7 +42,7 @@ func dryRunRecordGet(_ context.Context, runtime *common.RuntimeContext) *common.
 }
 
 func dryRunRecordSearch(_ context.Context, runtime *common.RuntimeContext) *common.DryRunAPI {
-	body, _ := parseRecordSearchBody(runtime)
+	body, _ := parseJSONObject(runtime.Str("json"), "json")
 	return common.NewDryRunAPI().
 		POST("/open-apis/base/v3/bases/:base_token/tables/:table_id/records/search").
 		Body(body).
@@ -115,7 +115,6 @@ func validateRecordJSON(runtime *common.RuntimeContext) error {
 func recordListFields(runtime *common.RuntimeContext) []string {
 	return runtime.StrArray("field-id")
 }
-
 func executeRecordList(runtime *common.RuntimeContext) error {
 	offset := runtime.Int("offset")
 	if offset < 0 {
@@ -148,7 +147,7 @@ func executeRecordGet(runtime *common.RuntimeContext) error {
 }
 
 func executeRecordSearch(runtime *common.RuntimeContext) error {
-	body, err := parseRecordSearchBody(runtime)
+	body, err := parseJSONObject(runtime.Str("json"), "json")
 	if err != nil {
 		return err
 	}
@@ -218,12 +217,4 @@ func executeRecordDelete(runtime *common.RuntimeContext) error {
 	}
 	runtime.Out(map[string]interface{}{"deleted": true, "record_id": runtime.Str("record-id")}, nil)
 	return nil
-}
-
-func parseRecordSearchBody(runtime *common.RuntimeContext) (map[string]interface{}, error) {
-	body, err := parseJSONObject(runtime.Str("json"), "json")
-	if err != nil {
-		return nil, err
-	}
-	return body, nil
 }

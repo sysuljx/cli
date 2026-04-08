@@ -22,9 +22,6 @@ var BaseRecordUpsert = common.Shortcut{
 		recordRefFlag(false),
 		{Name: "json", Desc: "record JSON object", Required: true},
 	},
-	Validate: func(ctx context.Context, runtime *common.RuntimeContext) error {
-		return validateRecordJSON(runtime)
-	},
 	DryRun: dryRunRecordUpsert,
 	Execute: func(ctx context.Context, runtime *common.RuntimeContext) error {
 		return executeRecordUpsert(runtime)
