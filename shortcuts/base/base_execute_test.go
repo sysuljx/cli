@@ -606,7 +606,7 @@ func TestBaseRecordExecuteReadCreateDelete(t *testing.T) {
 		factory, stdout, reg := newExecuteFactory(t)
 		reg.Register(&httpmock.Stub{
 			Method: "POST",
-			URL:    "/open-apis/base/v3/bases/app_x/tables/tbl_x/records/batch",
+			URL:    "/open-apis/base/v3/bases/app_x/tables/tbl_x/records/batch_create",
 			Body: map[string]interface{}{
 				"code": 0,
 				"data": map[string]interface{}{
@@ -627,8 +627,8 @@ func TestBaseRecordExecuteReadCreateDelete(t *testing.T) {
 	t.Run("batch update", func(t *testing.T) {
 		factory, stdout, reg := newExecuteFactory(t)
 		reg.Register(&httpmock.Stub{
-			Method: "PATCH",
-			URL:    "/open-apis/base/v3/bases/app_x/tables/tbl_x/records/batch",
+			Method: "POST",
+			URL:    "/open-apis/base/v3/bases/app_x/tables/tbl_x/records/batch_update",
 			Body: map[string]interface{}{
 				"code": 0,
 				"data": map[string]interface{}{
@@ -649,8 +649,8 @@ func TestBaseRecordExecuteReadCreateDelete(t *testing.T) {
 	t.Run("batch update passthrough", func(t *testing.T) {
 		factory, stdout, reg := newExecuteFactory(t)
 		updateStub := &httpmock.Stub{
-			Method: "PATCH",
-			URL:    "/open-apis/base/v3/bases/app_x/tables/tbl_x/records/batch",
+			Method: "POST",
+			URL:    "/open-apis/base/v3/bases/app_x/tables/tbl_x/records/batch_update",
 			Body: map[string]interface{}{
 				"code": 0,
 				"data": map[string]interface{}{

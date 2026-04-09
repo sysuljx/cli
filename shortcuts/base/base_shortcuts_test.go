@@ -264,6 +264,12 @@ func TestBaseRecordValidate(t *testing.T) {
 	if BaseRecordUpsert.Validate != nil {
 		t.Fatalf("record upsert validate should be nil for API passthrough")
 	}
+	if BaseRecordBatchCreate.Validate != nil {
+		t.Fatalf("record batch create validate should be nil")
+	}
+	if BaseRecordBatchUpdate.Validate != nil {
+		t.Fatalf("record batch update validate should be nil")
+	}
 }
 
 func TestBaseViewValidate(t *testing.T) {

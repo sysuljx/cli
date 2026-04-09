@@ -70,7 +70,7 @@ func dryRunRecordUpsert(_ context.Context, runtime *common.RuntimeContext) *comm
 func dryRunRecordBatchCreate(_ context.Context, runtime *common.RuntimeContext) *common.DryRunAPI {
 	body, _ := parseJSONObject(runtime.Str("json"), "json")
 	return common.NewDryRunAPI().
-		POST("/open-apis/base/v3/bases/:base_token/tables/:table_id/records/batch").
+		POST("/open-apis/base/v3/bases/:base_token/tables/:table_id/records/batch_create").
 		Body(body).
 		Set("base_token", runtime.Str("base-token")).
 		Set("table_id", baseTableID(runtime))
@@ -79,7 +79,7 @@ func dryRunRecordBatchCreate(_ context.Context, runtime *common.RuntimeContext) 
 func dryRunRecordBatchUpdate(_ context.Context, runtime *common.RuntimeContext) *common.DryRunAPI {
 	body, _ := parseJSONObject(runtime.Str("json"), "json")
 	return common.NewDryRunAPI().
-		PATCH("/open-apis/base/v3/bases/:base_token/tables/:table_id/records/batch").
+		POST("/open-apis/base/v3/bases/:base_token/tables/:table_id/records/batch_update").
 		Body(body).
 		Set("base_token", runtime.Str("base-token")).
 		Set("table_id", baseTableID(runtime))
@@ -188,7 +188,7 @@ func executeRecordBatchCreate(runtime *common.RuntimeContext) error {
 	if err != nil {
 		return err
 	}
-	result, err := baseV3Raw(runtime, "POST", baseV3Path("bases", runtime.Str("base-token"), "tables", baseTableID(runtime), "records", "batch"), nil, body)
+	result, err := baseV3Raw(runtime, "POST", baseV3Path("bases", runtime.Str("base-token"), "tables", baseTableID(runtime), "records", "batch_create"), nil, body)
 	data, err := handleBaseAPIResult(result, err, "batch create records")
 	if err != nil {
 		return err
@@ -202,7 +202,7 @@ func executeRecordBatchUpdate(runtime *common.RuntimeContext) error {
 	if err != nil {
 		return err
 	}
-	result, err := baseV3Raw(runtime, "PATCH", baseV3Path("bases", runtime.Str("base-token"), "tables", baseTableID(runtime), "records", "batch"), nil, body)
+	result, err := baseV3Raw(runtime, "POST", baseV3Path("bases", runtime.Str("base-token"), "tables", baseTableID(runtime), "records", "batch_update"), nil, body)
 	data, err := handleBaseAPIResult(result, err, "batch update records")
 	if err != nil {
 		return err

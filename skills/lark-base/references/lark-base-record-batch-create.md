@@ -38,7 +38,7 @@ lark-cli base +record-batch-create \
 **HTTP 方法和路径：**
 
 ```http
-POST /open-apis/base/v3/bases/:base_token/tables/:table_id/records/batch
+POST /open-apis/base/v3/bases/:base_token/tables/:table_id/records/batch_create
 ```
 
 ## `--json` 结构

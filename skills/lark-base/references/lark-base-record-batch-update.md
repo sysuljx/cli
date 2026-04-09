@@ -37,7 +37,7 @@ lark-cli base +record-batch-update \
 **HTTP 方法和路径：**
 
 ```http
-PATCH /open-apis/base/v3/bases/:base_token/tables/:table_id/records/batch
+POST /open-apis/base/v3/bases/:base_token/tables/:table_id/records/batch_update
 ```
 
 ## `--json` 结构
