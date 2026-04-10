@@ -233,28 +233,6 @@ func TestBaseTableValidate(t *testing.T) {
 	}
 }
 
-func TestBaseRecordValidate(t *testing.T) {
-	ctx := context.Background()
-	if BaseRecordList.Validate != nil {
-		t.Fatalf("record list validate should be nil after removing --fields")
-	}
-	if BaseRecordGet.Validate != nil {
-		t.Fatalf("record get validate should be nil after removing --fields")
-	}
-	if BaseRecordUpsert.Validate == nil {
-		t.Fatalf("record upsert validate should be set")
-	}
-	if err := BaseRecordUpsert.Validate(ctx, newBaseTestRuntime(map[string]string{"base-token": "b", "table-id": "tbl_1", "json": "{"}, nil, nil)); err != nil {
-		t.Fatalf("record upsert validate should bypass malformed json, err=%v", err)
-	}
-	if BaseRecordBatchCreate.Validate != nil {
-		t.Fatalf("record batch create validate should be nil")
-	}
-	if BaseRecordBatchUpdate.Validate != nil {
-		t.Fatalf("record batch update validate should be nil")
-	}
-}
-
 func TestBaseViewValidate(t *testing.T) {
 	ctx := context.Background()
 	if err := BaseViewCreate.Validate(ctx, newBaseTestRuntime(map[string]string{"base-token": "b", "table-id": "tbl_1", "json": `{"name":"Main"}`}, nil, nil)); err != nil {

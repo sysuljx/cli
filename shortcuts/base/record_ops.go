@@ -95,10 +95,6 @@ func dryRunRecordHistoryList(_ context.Context, runtime *common.RuntimeContext) 
 		Set("base_token", runtime.Str("base-token"))
 }
 
-func validateRecordJSON(runtime *common.RuntimeContext) error {
-	return nil
-}
-
 func executeRecordList(runtime *common.RuntimeContext) error {
 	offset := runtime.Int("offset")
 	if offset < 0 {
