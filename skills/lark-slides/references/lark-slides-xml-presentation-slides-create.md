@@ -1,4 +1,4 @@
-# lark-slides xml_presentation.sildes create
+# lark-slides xml_presentation.slides create
 
 ## 用途
 
@@ -7,7 +7,7 @@
 ## 命令
 
 ```bash
-lark-cli slides xml_presentation.sildes create --params '<json_params>' --data '<json_data>'
+lark-cli slides xml_presentation.slides create --params '<json_params>' --data '<json_data>'
 ```
 
 ## 参数说明
@@ -74,7 +74,7 @@ lark-cli slides xml_presentation.sildes create --params '<json_params>' --data '
 ### 在末尾添加幻灯片
 
 ```bash
-lark-cli slides xml_presentation.sildes create --params '{
+lark-cli slides xml_presentation.slides create --params '{
   "xml_presentation_id": "S7YwsFIGIlnS2qdscKDc1Yabcef"
 }' --data '{
   "slide": {
@@ -86,7 +86,7 @@ lark-cli slides xml_presentation.sildes create --params '{
 ### 在指定页面前插入幻灯片
 
 ```bash
-lark-cli slides xml_presentation.sildes create --params '{
+lark-cli slides xml_presentation.slides create --params '{
   "xml_presentation_id": "S7YwsFIGIlnS2qdscKDc1Yabcef"
 }' --data '{
   "slide": {
@@ -99,7 +99,7 @@ lark-cli slides xml_presentation.sildes create --params '{
 ### 带图形元素的幻灯片
 
 ```bash
-lark-cli slides xml_presentation.sildes create --params '{
+lark-cli slides xml_presentation.slides create --params '{
   "xml_presentation_id": "S7YwsFIGIlnS2qdscKDc1Yabcef"
 }' --data '{
   "slide": {
@@ -130,7 +130,7 @@ cat > slide.xml << 'EOF'
 EOF
 
 # 然后创建幻灯片
-lark-cli slides xml_presentation.sildes create \
+lark-cli slides xml_presentation.slides create \
   --params '{"xml_presentation_id":"S7YwsFIGIlnS2qdscKDc1Yabcef"}' \
   --data "$(jq -n --arg content "$(cat slide.xml)" '{slide:{content:$content}}')"
 ```
@@ -172,7 +172,7 @@ lark-cli slides xml_presentation.sildes create \
 
 ## 注意事项
 
-1. **执行前必做**: 使用 `lark-cli schema slides.xml_presentation.sildes.create` 查看最新的参数结构
+1. **执行前必做**: 使用 `lark-cli schema slides.xml_presentation.slides.create` 查看最新的参数结构
 2. **slide.content 格式**: 必须是完整的 `<slide>` 元素，不是整个 presentation
 3. **命名空间建议**: 协议标准写法应带 `xmlns`，例如 `<slide xmlns="http://www.larkoffice.com/sml/2.0">`；当前服务端实现可能兼容不带 `xmlns` 的输入，但不作为协议保证
 4. **fill / border 写法**: 颜色填充使用 `<fill><fillColor color="..."/></fill>`，边框常用 `<border color="..." width="2"/>`
@@ -197,7 +197,7 @@ declare -a slides=(
 
 for slide_xml in "${slides[@]}"; do
   payload=$(jq -n --arg content "$slide_xml" '{slide:{content:$content}}')
-  lark-cli slides xml_presentation.sildes create --params "{\"xml_presentation_id\":\"$PRESENTATION_ID\"}" --data "$payload"
+  lark-cli slides xml_presentation.slides create --params "{\"xml_presentation_id\":\"$PRESENTATION_ID\"}" --data "$payload"
 done
 ```
 
@@ -205,6 +205,6 @@ done
 
 - [xml_presentations create](lark-slides-xml-presentations-create.md) - 创建空白 PPT
 - [xml_presentations get](lark-slides-xml-presentations-get.md) - 读取 PPT 内容
-- [xml_presentation.sildes delete](lark-slides-xml-presentation-slides-delete.md) - 删除幻灯片页面
+- [xml_presentation.slides delete](lark-slides-xml-presentation-slides-delete.md) - 删除幻灯片页面
 - [xml-format-guide.md](xml-format-guide.md) - XML 格式详细规范
 - [xml-schema-quick-ref.md](xml-schema-quick-ref.md) - Schema 快速参考

@@ -76,7 +76,7 @@ Step 2: 生成大纲 → 用户确认 → 逐页创建
   - 生成结构化大纲（每页标题 + 要点 + 布局描述），交给用户确认
   - 用户确认或调整后，开始创建：
     · xml_presentations.create 创建空白 PPT（仅传标题和尺寸）
-    · xml_presentation.silde.create 逐页添加 slide
+    · xml_presentation.slide.create 逐页添加 slide
   - 每页 slide 需要完整的 XML：背景、文本、图形、配色
   - 复杂元素（table、chart）需参考 XSD 原文
 
@@ -84,7 +84,7 @@ Step 3: 审查 & 交付
   - 创建完成后，用 xml_presentations.get 读取全文 XML，确认：
     · 页数是否正确？每页内容是否完整？
     · 配色是否统一？字号层级是否合理？
-  - 有问题 → 用 xml_presentation.silde.delete 删除问题页，重新创建
+  - 有问题 → 用 xml_presentation.slide.delete 删除问题页，重新创建
   - 没问题 → 交付：告知用户演示文稿 ID 和访问方式
 ```
 
@@ -228,7 +228,7 @@ lark-cli slides <resource> <method> [flags]  # 调用 API
   - `create` — 创建空白 PPT（当前仅支持标题和长宽）
   - `get` — 读取ppt全文信息，xml格式返回
 
-### xml_presentation.silde
+### xml_presentation.slide
 
   - `create` — 在指定 xml 演示文稿下创建页面
   - `delete` — 删除指定 xml 演示文稿下的页面
@@ -248,8 +248,8 @@ lark-cli slides <resource> <method> [flags]  # 调用 API
 |------|-----------|
 | `xml_presentations.create` | `slides:presentation:create` |
 | `xml_presentations.get` | `slides:presentation:read` |
-| `xml_presentation.silde.create` | `slides:presentation:update` 或 `slides:presentation:write_only` |
-| `xml_presentation.silde.delete` | `slides:presentation:update` 或 `slides:presentation:write_only` |
+| `xml_presentation.slide.create` | `slides:presentation:update` 或 `slides:presentation:write_only` |
+| `xml_presentation.slide.delete` | `slides:presentation:update` 或 `slides:presentation:write_only` |
 
 ## 常见错误速查
 

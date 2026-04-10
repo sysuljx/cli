@@ -1,4 +1,4 @@
-# lark-slides xml_presentation.sildes delete
+# lark-slides xml_presentation.slides delete
 
 ## 用途
 
@@ -7,7 +7,7 @@
 ## 命令
 
 ```bash
-lark-cli slides xml_presentation.sildes delete --params '<json_params>'
+lark-cli slides xml_presentation.slides delete --params '<json_params>'
 ```
 
 ## 参数说明
@@ -39,7 +39,7 @@ lark-cli slides xml_presentation.sildes delete --params '<json_params>'
 ### 删除指定幻灯片
 
 ```bash
-lark-cli slides xml_presentation.sildes delete --params '{
+lark-cli slides xml_presentation.slides delete --params '{
   "xml_presentation_id": "S7YwsFIGIlnS2qdscKDc1Yabcef",
   "slide_id": "sld_xxx"
 }'
@@ -52,7 +52,7 @@ lark-cli slides xml_presentation.sildes delete --params '{
 lark-cli slides xml_presentations get --params '{"xml_presentation_id":"S7YwsFIGIlnS2qdscKDc1Yabcef"}' | jq -r '.xml_presentation.content'
 
 # 然后按已知 slide_id 删除
-lark-cli slides xml_presentation.sildes delete --params '{"xml_presentation_id":"S7YwsFIGIlnS2qdscKDc1Yabcef","slide_id":"sld_xxx"}'
+lark-cli slides xml_presentation.slides delete --params '{"xml_presentation_id":"S7YwsFIGIlnS2qdscKDc1Yabcef","slide_id":"sld_xxx"}'
 ```
 
 ## 返回值
@@ -82,7 +82,7 @@ lark-cli slides xml_presentation.sildes delete --params '{"xml_presentation_id":
 
 ## 注意事项
 
-1. **执行前必做**: 使用 `lark-cli schema slides.xml_presentation.sildes.delete` 查看最新的参数结构
+1. **执行前必做**: 使用 `lark-cli schema slides.xml_presentation.slides.delete` 查看最新的参数结构
 2. **删除不可逆**: 删除操作无法撤销，请确保已备份重要内容
 3. **至少保留一页**: 演示文稿必须至少保留一页幻灯片，删除最后一页会报错
 4. **版本控制**: 如果依赖版本号并发控制，删除前先确认 `revision_id`
@@ -93,7 +93,7 @@ lark-cli slides xml_presentation.sildes delete --params '{"xml_presentation_id":
 ### 方法 1: 创建时保存
 
 ```bash
-lark-cli slides xml_presentation.sildes create --params '{"xml_presentation_id":"S7YwsFIGIlnS2qdscKDc1Yabcef"}' --data '{
+lark-cli slides xml_presentation.slides create --params '{"xml_presentation_id":"S7YwsFIGIlnS2qdscKDc1Yabcef"}' --data '{
   "slide": {
     "content": "<slide xmlns=\"http://www.larkoffice.com/sml/2.0\"><data><shape type=\"text\" topLeftX=\"80\" topLeftY=\"80\" width=\"800\" height=\"120\"><content textType=\"title\"><p>新页面</p></content></shape></data></slide>"
   }
@@ -108,7 +108,7 @@ lark-cli slides xml_presentation.sildes create --params '{"xml_presentation_id":
 
 ```bash
 for slide_id in sld_a sld_b sld_c; do
-  lark-cli slides xml_presentation.sildes delete --params "{\"xml_presentation_id\":\"S7YwsFIGIlnS2qdscKDc1Yabcef\",\"slide_id\":\"$slide_id\"}"
+  lark-cli slides xml_presentation.slides delete --params "{\"xml_presentation_id\":\"S7YwsFIGIlnS2qdscKDc1Yabcef\",\"slide_id\":\"$slide_id\"}"
 done
 ```
 
@@ -116,4 +116,4 @@ done
 
 - [xml_presentations create](lark-slides-xml-presentations-create.md) - 创建空白 PPT
 - [xml_presentations get](lark-slides-xml-presentations-get.md) - 读取 PPT 内容
-- [xml_presentation.sildes create](lark-slides-xml-presentation-slides-create.md) - 添加幻灯片页面
+- [xml_presentation.slides create](lark-slides-xml-presentation-slides-create.md) - 添加幻灯片页面

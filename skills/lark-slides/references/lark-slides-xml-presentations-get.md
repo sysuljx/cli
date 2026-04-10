@@ -90,5 +90,5 @@ lark-cli slides xml_presentations get --params '{"xml_presentation_id":"S7YwsFIG
 ## 相关命令
 
 - [xml_presentations create](lark-slides-xml-presentations-create.md) - 创建空白 PPT
-- [xml_presentation.sildes create](lark-slides-xml-presentation-slides-create.md) - 添加幻灯片页面
-- [xml_presentation.sildes delete](lark-slides-xml-presentation-slides-delete.md) - 删除幻灯片页面
+- [xml_presentation.slides create](lark-slides-xml-presentation-slides-create.md) - 添加幻灯片页面
+- [xml_presentation.slides delete](lark-slides-xml-presentation-slides-delete.md) - 删除幻灯片页面
