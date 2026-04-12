@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/larksuite/cli/extension/fileio"
 	"github.com/larksuite/cli/internal/auth"
@@ -52,6 +53,44 @@ func hintMarkAsRead(runtime *common.RuntimeContext, mailboxID, originalMessageID
 		"tip: mark original as read? lark-cli mail user_mailbox.messages batch_modify_message"+
 			` --params '{"user_mailbox_id":"%s"}' --data '{"message_ids":["%s"],"remove_label_ids":["UNREAD"]}'`+"\n",
 		sanitizeForTerminal(mailboxID), sanitizeForTerminal(originalMessageID))
+}
+
+// resolveScheduledSendTime parses --send-time / --send-after flags and returns
+// the Unix-seconds timestamp for scheduled sending. Returns 0 for immediate send.
+// Priority: --send-time > --send-after > immediate (0).
+func resolveScheduledSendTime(runtime *common.RuntimeContext) (int64, error) {
+	sendTime := runtime.Str("send-time")
+	sendAfter := runtime.Str("send-after")
+
+	if sendTime != "" {
+		if sendAfter != "" {
+			fmt.Fprintf(runtime.IO().ErrOut,
+				"warning: both --send-time and --send-after provided; using --send-time\n")
+		}
+		ts, err := strconv.ParseInt(sendTime, 10, 64)
+		if err != nil || ts <= 0 {
+			return 0, fmt.Errorf("--send-time must be a positive unix timestamp in seconds")
+		}
+		return ts, validateMinDelay(ts)
+	}
+	if sendAfter != "" {
+		dur, err := time.ParseDuration(sendAfter)
+		if err != nil {
+			return 0, fmt.Errorf("--send-after invalid duration: %w", err)
+		}
+		ts := time.Now().Add(dur).Unix()
+		return ts, validateMinDelay(ts)
+	}
+	return 0, nil // immediate send
+}
+
+// validateMinDelay checks that ts is at least 5 minutes from now, matching
+// the open-access server-side constraint for scheduled send.
+func validateMinDelay(ts int64) error {
+	if ts < time.Now().Unix()+5*60 {
+		return fmt.Errorf("scheduled send must be at least 5 minutes from now")
+	}
+	return nil
 }
 
 // messageOutputSchema returns a JSON description of +message / +messages / +thread output fields.
