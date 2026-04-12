@@ -6,6 +6,7 @@ package draft
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/larksuite/cli/shortcuts/common"
@@ -61,6 +62,18 @@ func UpdateWithRaw(runtime *common.RuntimeContext, mailboxID, draftID, rawEML st
 
 func Send(runtime *common.RuntimeContext, mailboxID, draftID string) (map[string]interface{}, error) {
 	return runtime.CallAPI("POST", mailboxPath(mailboxID, "drafts", draftID, "send"), nil, nil)
+}
+
+// SendWithSendTime sends a draft with an optional scheduled send time.
+// If sendTime > 0, the send_time parameter is included in the request body
+// to schedule the message for a future time.
+func SendWithSendTime(runtime *common.RuntimeContext, mailboxID, draftID string, sendTime int64) (map[string]interface{}, error) {
+	if sendTime > 0 {
+		return runtime.CallAPI("POST", mailboxPath(mailboxID, "drafts", draftID, "send"), nil, map[string]interface{}{
+			"send_time": strconv.FormatInt(sendTime, 10),
+		})
+	}
+	return Send(runtime, mailboxID, draftID)
 }
 
 func extractDraftID(data map[string]interface{}) string {

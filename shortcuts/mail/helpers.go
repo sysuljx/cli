@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/larksuite/cli/extension/fileio"
 	"github.com/larksuite/cli/internal/auth"
@@ -2015,4 +2016,53 @@ func validateComposeInlineAndAttachments(fio fileio.FileIO, attachFlag, inlineFl
 	}
 	allFiles := append(splitByComma(attachFlag), inlineSpecFilePaths(inlineSpecs)...)
 	return checkAttachmentSizeLimit(fio, allFiles, 0)
+}
+
+// resolveScheduledSendTime parses --send-time / --send-after and returns a Unix timestamp
+// in seconds (0 means send immediately). It validates that the scheduled time is at least
+// 5 minutes in the future.
+func resolveScheduledSendTime(runtime *common.RuntimeContext) (int64, error) {
+	sendTimeFlag := runtime.Str("send-time")
+	sendAfterFlag := runtime.Str("send-after")
+
+	// Priority: --send-time > --send-after > immediate (0)
+	if sendTimeFlag != "" {
+		ts, err := strconv.ParseInt(sendTimeFlag, 10, 64)
+		if err != nil {
+			return 0, fmt.Errorf("--send-time must be a positive unix timestamp in seconds")
+		}
+		if ts <= 0 {
+			return 0, fmt.Errorf("--send-time must be a positive unix timestamp in seconds")
+		}
+		if err := validateMinDelay(ts); err != nil {
+			return 0, err
+		}
+		// Warn if both flags are set
+		if sendAfterFlag != "" && runtime.Factory != nil && runtime.Factory.IOStreams != nil && runtime.Factory.IOStreams.ErrOut != nil {
+			fmt.Fprintf(runtime.Factory.IOStreams.ErrOut, "warning: both --send-time and --send-after are set; --send-time takes precedence\n")
+		}
+		return ts, nil
+	}
+
+	if sendAfterFlag != "" {
+		dur, err := time.ParseDuration(sendAfterFlag)
+		if err != nil {
+			return 0, fmt.Errorf("--send-after invalid duration: %w", err)
+		}
+		ts := time.Now().Add(dur).Unix()
+		if err := validateMinDelay(ts); err != nil {
+			return 0, err
+		}
+		return ts, nil
+	}
+
+	return 0, nil // Send immediately
+}
+
+// validateMinDelay checks that the scheduled timestamp is at least 5 minutes in the future.
+func validateMinDelay(ts int64) error {
+	if ts < time.Now().Unix()+5*60 {
+		return fmt.Errorf("scheduled send must be at least 5 minutes from now")
+	}
+	return nil
 }

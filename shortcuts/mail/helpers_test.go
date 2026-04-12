@@ -13,8 +13,10 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -1004,5 +1006,162 @@ func TestValidateComposeHasAtLeastOneRecipient_AlsoChecksCount(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "exceeds the limit") {
 		t.Fatalf("unexpected error message: %v", err)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// resolveScheduledSendTime
+// ---------------------------------------------------------------------------
+
+// runtimeForScheduledSendTest creates a RuntimeContext with the given flag values.
+func runtimeForScheduledSendTest(t *testing.T, values map[string]string) *common.RuntimeContext {
+	t.Helper()
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().String("send-time", "", "")
+	cmd.Flags().String("send-after", "", "")
+	if err := cmd.ParseFlags(nil); err != nil {
+		t.Fatalf("parse flags failed: %v", err)
+	}
+	for k, v := range values {
+		if err := cmd.Flags().Set(k, v); err != nil {
+			t.Fatalf("set flag --%s failed: %v", k, err)
+		}
+	}
+	rt := common.TestNewRuntimeContext(cmd, nil)
+	return rt
+}
+
+func TestResolveScheduledSendTime_Empty(t *testing.T) {
+	// No flags set → immediate send (0)
+	rt := runtimeForScheduledSendTest(t, nil)
+	ts, err := resolveScheduledSendTime(rt)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ts != 0 {
+		t.Errorf("expected 0 (immediate), got %d", ts)
+	}
+}
+
+func TestResolveScheduledSendTime_Absolute_Valid(t *testing.T) {
+	// A timestamp 1 hour in the future should be accepted
+	futureTime := time.Now().Unix() + 3600
+	rt := runtimeForScheduledSendTest(t, map[string]string{
+		"send-time": strconv.FormatInt(futureTime, 10),
+	})
+	ts, err := resolveScheduledSendTime(rt)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ts != futureTime {
+		t.Errorf("expected %d, got %d", futureTime, ts)
+	}
+}
+
+func TestResolveScheduledSendTime_Absolute_Invalid(t *testing.T) {
+	// Non-numeric value should error
+	rt := runtimeForScheduledSendTest(t, map[string]string{
+		"send-time": "not-a-number",
+	})
+	_, err := resolveScheduledSendTime(rt)
+	if err == nil {
+		t.Fatal("expected error for non-numeric send-time")
+	}
+	if !strings.Contains(err.Error(), "--send-time must be a positive unix timestamp") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestResolveScheduledSendTime_Absolute_Zero(t *testing.T) {
+	// Zero timestamp should error
+	rt := runtimeForScheduledSendTest(t, map[string]string{
+		"send-time": "0",
+	})
+	_, err := resolveScheduledSendTime(rt)
+	if err == nil {
+		t.Fatal("expected error for zero send-time")
+	}
+	if !strings.Contains(err.Error(), "--send-time must be a positive unix timestamp") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestResolveScheduledSendTime_Absolute_TooSoon(t *testing.T) {
+	// A timestamp in the past should fail minimum delay check
+	pastTime := time.Now().Unix() - 60
+	rt := runtimeForScheduledSendTest(t, map[string]string{
+		"send-time": strconv.FormatInt(pastTime, 10),
+	})
+	_, err := resolveScheduledSendTime(rt)
+	if err == nil {
+		t.Fatal("expected error for past timestamp")
+	}
+	if !strings.Contains(err.Error(), "at least 5 minutes from now") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestResolveScheduledSendTime_Relative_Valid(t *testing.T) {
+	// --send-after 10m should be accepted (future timestamp > 5 minutes)
+	rt := runtimeForScheduledSendTest(t, map[string]string{
+		"send-after": "10m",
+	})
+	ts, err := resolveScheduledSendTime(rt)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ts <= time.Now().Unix()+5*60 {
+		t.Errorf("expected timestamp > 5 minutes from now, got %d (now=%d)", ts, time.Now().Unix())
+	}
+}
+
+func TestResolveScheduledSendTime_Relative_TooSoon(t *testing.T) {
+	// --send-after 30s should fail (less than 5 minute minimum)
+	rt := runtimeForScheduledSendTest(t, map[string]string{
+		"send-after": "30s",
+	})
+	_, err := resolveScheduledSendTime(rt)
+	if err == nil {
+		t.Fatal("expected error for --send-after 30s")
+	}
+	if !strings.Contains(err.Error(), "at least 5 minutes from now") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestResolveScheduledSendTime_Relative_Invalid(t *testing.T) {
+	// Invalid duration format should error
+	rt := runtimeForScheduledSendTest(t, map[string]string{
+		"send-after": "not-a-duration",
+	})
+	_, err := resolveScheduledSendTime(rt)
+	if err == nil {
+		t.Fatal("expected error for invalid duration")
+	}
+	if !strings.Contains(err.Error(), "--send-after invalid duration") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestResolveScheduledSendTime_Conflict(t *testing.T) {
+	// Both flags set → --send-time takes precedence
+	futureTime := time.Now().Unix() + 7200
+
+	// Create a proper runtime with the necessary flags registered
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().String("send-time", "", "")
+	cmd.Flags().String("send-after", "", "")
+	_ = cmd.Flags().Set("send-time", strconv.FormatInt(futureTime, 10))
+	_ = cmd.Flags().Set("send-after", "10m")
+
+	rt := common.TestNewRuntimeContext(cmd, nil)
+
+	ts, err := resolveScheduledSendTime(rt)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// --send-time should take precedence
+	if ts != futureTime {
+		t.Errorf("expected send-time value %d, got %d", futureTime, ts)
 	}
 }

@@ -140,4 +140,21 @@ lark-cli mail user_mailbox.messages send_status --params '{"user_mailbox_id":"me
 - `lark-cli mail +reply` — 回复邮件
 - `lark-cli mail +reply-all` — 回复全部
 - `lark-cli mail +forward` — 转发邮件
+- `lark-cli mail +draft-send` — 发送已有草稿（支持定时发送）
+- `lark-cli mail +cancel-scheduled-send` — 取消定时发送
 - `lark-cli mail user_mailbox.messages list` — 列出邮件
+
+## 定时发送
+
+如需定时发送功能（设置发送时间），请使用 `+draft-send` 命令替代 `+send --confirm-send`：
+
+```bash
+# 创建草稿后定时发送
+lark-cli mail +draft-create --to alice@example.com --subject '会议提醒' --body '<p>明天下午3点有会议</p>'
+# → 返回 draft_id
+
+# 1 小时后定时发送
+lark-cli mail +draft-send --draft-id <draft_id> --send-after 1h
+```
+
+详细用法参见 [`lark-mail-draft-send.md`](lark-mail-draft-send.md)。
