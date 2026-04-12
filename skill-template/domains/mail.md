@@ -3,6 +3,7 @@
 - **邮件（Message）**：一封具体的邮件，包含发件人、收件人、主题、正文（纯文本/HTML）、附件。每封邮件有唯一 `message_id`。
 - **会话（Thread）**：同一主题的邮件链，包含原始邮件和所有回复/转发。通过 `thread_id` 关联。
 - **草稿（Draft）**：未发送的邮件。所有发送类命令默认保存为草稿，加 `--confirm-send` 才实际发送。
+- **定时发送（Scheduled Send）**：草稿可设置定时发送时间，状态流转为 `DRAFT` -> `SCHEDULED` -> `SENT`。通过 `--send-time`（Unix 秒时间戳）或 `--send-after`（相对时间如 `30m`、`2h`、`1d`）指定发送时间，必须至少为 5 分钟后。定时发送后邮件进入 `SCHEDULED` 状态，可通过 `+cancel-scheduled-send` 取消并退回 `DRAFT` 状态。
 - **文件夹（Folder）**：邮件的组织容器。内置文件夹：`INBOX`、`SENT`、`DRAFT`、`SCHEDULED`、`TRASH`、`SPAM`、`ARCHIVED`，也可自定义。
 - **标签（Label）**：邮件的分类标记，内置标签如 `FLAGGED`（星标）。一封邮件可有多个标签。
 - **附件（Attachment）**：分为普通附件和内嵌图片（inline，通过 CID 引用）。
@@ -218,3 +219,41 @@ lark-cli mail user_mailbox.folders create \
 
 - `user_mailbox_id` 几乎所有邮箱 API 都需要，一般传 `"me"` 代表当前用户
 - 列表接口支持 `--page-all` 自动翻页，无需手动处理 `page_token`
+
+### 定时发送
+
+通过 `--send-time`（绝对 Unix 秒时间戳）或 `--send-after`（相对时间）设置定时发送。定时时间必须至少为当前时间 5 分钟后。
+
+```bash
+# 定时发送草稿：1 小时后发送
+lark-cli mail +draft-send --mailbox me --draft-id DR_xxx --send-after 1h
+
+# 定时发送草稿：指定绝对时间（Unix 秒）
+lark-cli mail +draft-send --mailbox me --draft-id DR_xxx --send-time 1775846400
+
+# 通过 +send 创建并定时发送新邮件
+lark-cli mail +send --to alice@example.com --subject '周报' \
+  --body '<p>本周进展...</p>' --send-after 2h --confirm-send
+```
+
+### 取消定时发送
+
+将处于 `SCHEDULED` 状态的邮件退回 `DRAFT` 状态。
+
+```bash
+# 取消定时发送
+lark-cli mail +cancel-scheduled-send --mailbox me --message-id MSG_xxx
+```
+
+### 列出定时发送邮件
+
+使用 `SCHEDULED` 标签筛选处于定时发送状态的邮件。
+
+```bash
+# 列出所有定时发送的邮件
+lark-cli mail user_mailbox.messages list \
+  --params '{"user_mailbox_id":"me","page_size":20,"label_id":"SCHEDULED"}'
+
+# 使用 +triage 查看定时发送邮件摘要
+lark-cli mail +triage --filter '{"folder":"scheduled"}'
+```
