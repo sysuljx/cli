@@ -82,9 +82,12 @@ lark-cli mail multi_entity search --as user --data '{"query":"<关键词>"}'
 
 **处理规则：**
 1. 从结果中筛选有 `email` 字段的条目
-2. 若仅 1 个匹配且关键词吻合，直接使用其 `email`
-3. 若多个匹配，列出候选项供用户选择。展示尽可能多的字段帮助用户区分：
+2. 无论匹配数量多少，都必须列出候选项供用户确认后再使用（搜索是模糊匹配，单条结果不代表精确命中）。展示尽可能多的字段帮助用户区分：
    ```text
+   找到以下匹配"张三"的结果：
+   1. 张三 <zhangsan@example.com>
+      类型：user | 部门：研发团队
+   ---
    找到多个匹配"组"的结果，请选择：
    1. 团队邮件组 <team@example.com>
       类型：enterprise_mail_group | 标签：mail_group
@@ -94,8 +97,8 @@ lark-cli mail multi_entity search --as user --data '{"query":"<关键词>"}'
       类型：user | 部门：研发团队 | 备注名：张群同学
    ```
    可用字段：`name`（名称）、`email`（邮箱）、`department`（部门）、`tag`（标签）、`display_name`（备注名）、`type`（实体类型）、`member_count`（成员数，群类型时展示）。字段为空时省略。
-4. 若无匹配，告知用户未找到，建议换关键词或直接提供邮箱地址
-5. 用户确认后，将 `email` 传入 compose shortcut 的 `--to` / `--cc` / `--bcc` 参数
+3. 若无匹配，告知用户未找到，建议换关键词或直接提供邮箱地址
+4. 用户确认后，将 `email` 传入 compose shortcut 的 `--to` / `--cc` / `--bcc` 参数
 
 **注意：** 用户直接提供完整邮箱地址时不需要搜索，直接使用即可。
 
