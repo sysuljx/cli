@@ -5,9 +5,13 @@ package doc
 
 import (
 	"encoding/json"
+	"net/http"
 	"strings"
 
+	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
+
 	"github.com/larksuite/cli/internal/output"
+	"github.com/larksuite/cli/shortcuts/common"
 )
 
 type documentRef struct {
@@ -54,6 +58,33 @@ func extractDocumentToken(raw, marker string) (string, bool) {
 		return "", false
 	}
 	return token, true
+}
+
+// doDocAPI executes an OpenAPI request against the docs_ai endpoints and returns
+// the parsed "data" field from the standard Lark response envelope {code, msg, data}.
+func doDocAPI(runtime *common.RuntimeContext, method, apiPath string, body interface{}) (map[string]interface{}, error) {
+	boeHeader := func(option *larkcore.RequestOption) {
+		if option.Header == nil {
+			option.Header = make(http.Header)
+		}
+		option.Header.Set("X-TT-ENV", "ppe_general_agent_maoyan")
+		option.Header.Set("env", "pre_release")
+	}
+	return runtime.DoAPIJSON(method, apiPath, nil, body, boeHeader)
+}
+
+// stripBlockIDs removes "block_id" from each entry in data.document.newblocks.
+func stripBlockIDs(data map[string]interface{}) {
+	doc, _ := data["document"].(map[string]interface{})
+	if doc == nil {
+		return
+	}
+	blocks, _ := doc["newblocks"].([]interface{})
+	for _, b := range blocks {
+		if m, ok := b.(map[string]interface{}); ok {
+			delete(m, "block_id")
+		}
+	}
 }
 
 func buildDriveRouteExtra(docID string) (string, error) {

@@ -68,7 +68,7 @@ metadata:
     4. 如果用户有明确要求，则以用户要求优先。
 3. 使用 [`+update`](references/lark-whiteboard-update.md) shortcut 创建新的画板内容。根据用户需求，你可能会需要使用 [
    `docs +update`](../lark-doc/references/lark-doc-update.md) 创建新的画板，或使用 [
-   `+update --overwrite`](references/lark-whiteboard-update.md) 在原画板上覆盖式更新。
+   `+update --command overwrite`](references/lark-whiteboard-update.md) 在原画板上覆盖式更新。
 
 ## 与 lark-doc 的配合使用
 

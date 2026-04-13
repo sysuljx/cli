@@ -82,7 +82,6 @@ func TestResolveCommentMode(t *testing.T) {
 	tests := []struct {
 		name         string
 		explicitFull bool
-		selection    string
 		blockID      string
 		want         commentMode
 	}{
@@ -97,11 +96,6 @@ func TestResolveCommentMode(t *testing.T) {
 			want:         commentModeFull,
 		},
 		{
-			name:      "selection means local comment",
-			selection: "流程",
-			want:      commentModeLocal,
-		},
-		{
 			name:    "block id means local comment",
 			blockID: "blk_123",
 			want:    commentModeLocal,
@@ -112,69 +106,11 @@ func TestResolveCommentMode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := resolveCommentMode(tt.explicitFull, tt.selection, tt.blockID)
+			got := resolveCommentMode(tt.explicitFull, tt.blockID)
 			if got != tt.want {
 				t.Fatalf("mode mismatch: want %q, got %q", tt.want, got)
 			}
 		})
-	}
-}
-
-func TestSelectLocateMatch(t *testing.T) {
-	t.Parallel()
-
-	result := locateDocResult{
-		MatchCount: 2,
-		Matches: []locateDocMatch{
-			{
-				AnchorBlockID: "blk_1",
-				Blocks: []locateDocBlock{
-					{BlockID: "blk_1", RawMarkdown: "流程\n"},
-				},
-			},
-			{
-				AnchorBlockID: "blk_2",
-				Blocks: []locateDocBlock{
-					{BlockID: "blk_2", RawMarkdown: "流程图\n"},
-				},
-			},
-		},
-	}
-
-	_, _, err := selectLocateMatch(result)
-	if err == nil || !strings.Contains(err.Error(), "matched 2 blocks") {
-		t.Fatalf("expected ambiguous match error, got %v", err)
-	}
-	if strings.Contains(err.Error(), "流程") || strings.Contains(err.Error(), "流程图") {
-		t.Fatalf("ambiguous match error should not leak locate-doc snippets: %v", err)
-	}
-	if !strings.Contains(err.Error(), "anchor_block_id=blk_1") || !strings.Contains(err.Error(), "anchor_block_id=blk_2") {
-		t.Fatalf("ambiguous match error should keep anchor block identifiers: %v", err)
-	}
-}
-
-func TestParseLocateDocResultFallsBackToFirstBlock(t *testing.T) {
-	t.Parallel()
-
-	got := parseLocateDocResult(map[string]interface{}{
-		"match_count": float64(1),
-		"matches": []interface{}{
-			map[string]interface{}{
-				"blocks": []interface{}{
-					map[string]interface{}{
-						"block_id":     "blk_anchor",
-						"raw_markdown": "流程\n",
-					},
-				},
-			},
-		},
-	})
-
-	if len(got.Matches) != 1 {
-		t.Fatalf("expected 1 match, got %d", len(got.Matches))
-	}
-	if got.Matches[0].AnchorBlockID != "blk_anchor" {
-		t.Fatalf("expected fallback anchor block, got %q", got.Matches[0].AnchorBlockID)
 	}
 }
 

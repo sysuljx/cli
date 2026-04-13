@@ -151,8 +151,8 @@ npx -y @larksuite/whiteboard-cli@^0.2.0 -i ./diagrams/2026-03-27T143000/diagram.
 | 用户给了什么                       | 怎么获取 Token                                                                                                                                                 |
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 画板 Token（`XXX`）                | 直接使用                                                                                                                                                       |
-| 文档 URL 或 doc_id，文档中已有画板 | `lark-cli docs +fetch --doc <URL> --as user`，从返回的 `<whiteboard token=”XXX”/>` 中提取 token                                                                |
-| 文档 URL 或 doc_id，需要新建画板   | `lark-cli docs +update --doc <doc_id> --mode append --markdown '<whiteboard type=”blank”></whiteboard>' --as user`，从响应的 `data.board_tokens[0]` 获取 token |
+| 文档 URL 或 doc_id，文档中已有画板 | `lark-cli docs +fetch --api-version v2 --doc <URL> --as user`，从返回的 `<whiteboard token=”XXX”/>` 中提取 token                                                                |
+| 文档 URL 或 doc_id，需要新建画板   | `lark-cli docs +update --api-version v2 --doc <doc_id> --mode append --markdown '<whiteboard type=”blank”></whiteboard>' --as user`，从响应的 `data.board_tokens[0]` 获取 token |
 
 关于飞书文档的创建，读取等更多操作，请参考 lark-doc skill [`../lark-doc/SKILL.md`](../lark-doc/SKILL.md)。
 

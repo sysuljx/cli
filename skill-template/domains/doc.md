@@ -87,17 +87,17 @@ Drive Folder (云空间文件夹)
 ## 重要说明：画板编辑
 > **⚠️ lark-doc skill 不能直接编辑已有画板内容，但 `docs +update` 可以新建空白画板**
 ### 场景 1：已通过 docs +fetch 获取到文档内容和画板 token
-如果用户已经通过 `docs +fetch` 拉取了文档内容，并且文档中已有画板（返回的 markdown 中包含 `<whiteboard token="xxx"/>` 标签），请引导用户：
+如果用户已经通过 `docs +fetch` 拉取了文档内容，并且文档中已有画板（返回的内容中包含 `<whiteboard token="xxx"/>` 标签），请引导用户：
 1. 记录画板的 token
 2. 查看 [`../lark-whiteboard/SKILL.md`](../lark-whiteboard/SKILL.md) 了解如何编辑画板内容
 ### 场景 2：刚创建画板，需要编辑
 如果用户刚通过 `docs +update` 创建了空白画板，需要编辑时：
 **步骤 1：按空白画板语法创建**
-- 在 `--markdown` 中直接传 `<whiteboard type="blank"></whiteboard>`
-- 需要多个空白画板时，在同一个 `--markdown` 里重复多个 whiteboard 标签
+- 在 `--content` 中直接传 `<whiteboard type="blank"></whiteboard>`
+- 需要多个空白画板时，在同一个 `--content` 里重复多个 whiteboard 标签
   **步骤 2：从响应中记录 token**
-- `docs +update` 成功后，读取响应字段 `data.board_tokens`
-- `data.board_tokens` 是新建画板的 token 列表，后续编辑直接使用这里的 token
+- `docs +update` 成功后，从响应字段 `data.document.newblocks` 中提取新建的 block
+- `newblocks` 是本次新增的 block 列表，画板类型的 block 中包含画板 `token`，后续编辑使用此 token
   **步骤 3：引导编辑**
 - 记录需要编辑的画板 token
 - 查看 [`../lark-whiteboard/SKILL.md`](../lark-whiteboard/SKILL.md) 了解如何编辑画板内容

@@ -6,30 +6,83 @@
 ## 命令
 
 ```bash
-# 获取文档内容（默认输出 Markdown 文本）
-lark-cli docs +fetch --doc "https://xxx.feishu.cn/docx/Z1FjxxxxxxxxxxxxxxxxxxxtnAc"
+# 获取文档（默认 XML 格式，简洁模式）
+lark-cli docs +fetch --api-version v2 --doc "https://xxx.feishu.cn/docx/Z1FjxxxxxxxxxxxxxxxxxxxtnAc"
 
 # 直接传 token
-lark-cli docs +fetch --doc Z1FjxxxxxxxxxxxxxxxxxxxtnAc
+lark-cli docs +fetch --api-version v2 --doc Z1FjxxxxxxxxxxxxxxxxxxxtnAc
 
-# 知识库 URL 也支持
-lark-cli docs +fetch --doc "https://xxx.feishu.cn/wiki/Z1FjxxxxxxxxxxxxxxxxxxxtnAc"
+# 获取 Markdown 格式
+lark-cli docs +fetch --api-version v2 --doc Z1FjxxxxxxxxxxxxxxxxxxxtnAc --doc-format markdown
 
-# 分页获取（大文档）
-lark-cli docs +fetch --doc Z1FjxxxxxxxxxxxxxxxxxxxtnAc --offset 0 --limit 50
+# 带 block ID（用于后续 block 级更新）
+lark-cli docs +fetch --api-version v2 --doc Z1FjxxxxxxxxxxxxxxxxxxxtnAc --detail with-ids
 
-# 人类可读格式输出
-lark-cli docs +fetch --doc Z1FjxxxxxxxxxxxxxxxxxxxtnAc --format pretty
+# 全量导出（block ID + 样式 + 引用数据，用于编辑）
+lark-cli docs +fetch --api-version v2 --doc Z1FjxxxxxxxxxxxxxxxxxxxtnAc --detail full
+
+# 人类可读输出
+lark-cli docs +fetch --api-version v2 --doc Z1FjxxxxxxxxxxxxxxxxxxxtnAc --format pretty
 ```
+
+## 意图引导：选择正确的 `--detail` 级别
+
+| 意图 | `--detail` | 说明 |
+|------|-----------|------|
+| **只读**：浏览或总结文档内容 | `simple`（默认） | 简洁 XML/Markdown，不含 block ID、样式属性、引用元数据 |
+| **定位**：需要 block ID 与其他业务交互 | `with-ids` | 包含 block ID（如 `<p id="blkcnXXXX">`），可用于 `+update` 的 `--block-id` |
+| **编辑**：任何修改文档内容的需求 | `full` | 包含 block ID + 样式属性 + 引用元数据，提供完整文档结构信息 |
+
+**决策规则**：
+- 如果用户只是想看/读/总结文档 → `simple`
+- 如果后续需要用 `block_insert_after`/`block_replace`/`block_delete` → `with-ids` 或 `full`
+- 如果涉及复杂编辑（保留样式、处理引用）→ `full`
+
+## 返回值
+
+```json
+{
+  "ok": true,
+  "identity": "user",
+  "data": {
+    "document": {
+      "document_id": "doxcnXXXX",
+      "revision_id": 12,
+      "content": "<title>标题</title><p>文档内容...</p>"
+    }
+  }
+}
+```
+
+- **`document_id`**：文档标识符
+- **`revision_id`**：文档版本号
+- **`content`**：文档内容（格式由 `--doc-format` 决定）
 
 ## 参数
 
 | 参数 | 必填 | 说明 |
 |------|------|------|
-| `--doc` | 是 | 文档 URL 或 token（支持 `/docx/` 和 `/wiki/` 链接，系统自动提取 token） |
-| `--offset` | 否 | 分页偏移 |
-| `--limit` | 否 | 分页大小 |
-| `--format` | 否 | 输出格式：json（默认，含 title、markdown、has_more 等字段） \| pretty |
+| `--api-version` | 是 | 固定传 `v2` |
+| `--doc` | 是 | 文档 URL 或 token（支持 `/docx/` 和 `/wiki/` 链接，自动提取 token） |
+| `--doc-format` | 否 | 内容格式：`xml`（默认）\| `markdown` \| `text` |
+| `--detail` | 否 | 导出详细程度：`simple`（默认）\| `with-ids` \| `full` |
+| `--revision-id` | 否 | 文档版本号，-1 = 最新（默认 `-1`） |
+| `--format` | 否 | 输出格式：json（默认）\| pretty（直接输出 content） |
+
+### doc-format 格式说明
+
+| 格式 | 说明 | 适用场景 |
+|------|------|----------|
+| `xml` | DocxXML 格式（默认） | 精确的块级结构，适合编辑和分析 |
+| `markdown` | Lark-flavored Markdown | 可读性好，适合总结和展示 |
+
+### detail 导出级别
+
+| 级别 | export_block_id | export_style_attrs | export_cite_extra_data | 典型用途 |
+|------|:-:|:-:|:-:|------|
+| `simple` | ✗ | ✗ | ✗ | 只读浏览、内容总结（显式关闭所有导出选项） |
+| `with-ids` | ✓ | - | - | 定位 block 后进行 block 级更新 |
+| `full` | ✓ | ✓ | ✓ | 复杂编辑、保留完整格式 |
 
 ## 重要：图片、文件、画板的处理
 
@@ -37,25 +90,18 @@ lark-cli docs +fetch --doc Z1FjxxxxxxxxxxxxxxxxxxxtnAc --format pretty
 
 ### 识别格式
 
-返回的 Markdown 中，媒体文件以 HTML 标签形式出现：
+返回内容中，媒体文件以 XML 标签形式出现：
 
-- **图片**：
-  ```html
-  <image token="Z1FjxxxxxxxxxxxxxxxxxxxtnAc" width="1833" height="2491" align="center"/>
-  ```
+```xml
+<!-- 图片 -->
+<img token="Z1FjxxxxxxxxxxxxxxxxxxxtnAc" width="1833" height="2491"/>
 
-- **文件**：
-  ```html
-  <view type="1">
-    <file token="Z1FjxxxxxxxxxxxxxxxxxxxtnAc" name="skills.zip"/>
-  </view>
-  ```
+<!-- 文件 -->
+<source token="Z1FjxxxxxxxxxxxxxxxxxxxtnAc" name="skills.zip"/>
 
-- **画板**：
-  ```html
-  <whiteboard token="Z1FjxxxxxxxxxxxxxxxxxxxtnAc"/>
-  ```
-- 画板编辑：详见 [SKILL.md](../SKILL.md#重要说明画板编辑)
+<!-- 画板 -->
+<whiteboard token="Z1FjxxxxxxxxxxxxxxxxxxxtnAc"/>
+```
 
 ### 获取步骤
 
@@ -69,22 +115,9 @@ lark-cli docs +fetch --doc Z1FjxxxxxxxxxxxxxxxxxxxtnAc --format pretty
    lark-cli docs +media-download --token "提取的token" --output ./downloaded_media
    ```
 
-## Wiki URL 处理策略
+## 重要：嵌入电子表格 / 多维表格的处理
 
-知识库链接（`/wiki/TOKEN`）背后可能是云文档、电子表格、多维表格等不同类型的文档。当不确定类型时，**不能直接假设是云文档**，必须先查询实际类型。
-
-### 处理流程
-
-1. **先调用 lark-wiki 解析 wiki token**
-2. **从返回的 `node` 中获取 `obj_type`（实际文档类型）和 `obj_token`（实际文档 token）**
-3. **根据 `obj_type` 调用对应工具**：
-
-| obj_type | 工具 | 说明 |
-|----------|------|------|
-| `docx` | `lark-doc-fetch` | 云文档 |
-| `sheet` | `lark-sheet` | 电子表格 |
-| `bitable` | `lark-base` | 多维表格 |
-| 其他 | 告知用户暂不支持 | — |
+返回内容中可能包含 `<sheet>`、`<bitable>`、`<cite file-type="sheets|bitable">` 等嵌入引用标签。这些标签的内部数据无法通过 `docs +fetch` 获取——提取标签中的 `token` 等关键属性后，切到 [`lark-sheets`](../../lark-sheets/SKILL.md) 或 [`lark-base`](../../lark-base/SKILL.md) 下钻读取。详见 [SKILL.md 快速决策](../SKILL.md) 中的路由表。
 
 ## 工具组合
 
@@ -98,7 +131,7 @@ lark-cli docs +fetch --doc Z1FjxxxxxxxxxxxxxxxxxxxtnAc --format pretty
 
 ## 参考
 
-- [lark-doc-create](lark-doc-create.md) — 创建文档
+- [lark-doc-create](lark-doc-create.md) — 创建文档（含完整 XML 语法参考）
 - [lark-doc-update](lark-doc-update.md) — 更新文档
 - [lark-doc-media-preview](lark-doc-media-preview.md) — 预览素材
 - [lark-doc-media-download](lark-doc-media-download.md) — 下载素材/画板缩略图
