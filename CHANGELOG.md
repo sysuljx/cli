@@ -345,8 +345,11 @@ Bundled AI agent skills for intelligent assistance:
 - Bilingual documentation (English & Chinese).
 - CI/CD pipelines: linting, testing, coverage reporting, and automated releases.
 
+<<<<<<< HEAD
 [v1.0.11]: https://github.com/larksuite/cli/releases/tag/v1.0.11
 [v1.0.10]: https://github.com/larksuite/cli/releases/tag/v1.0.10
+=======
+>>>>>>> 053b1e4 (feat(slides): add image upload via +media-upload and @path placeholders in +create)
 [v1.0.9]: https://github.com/larksuite/cli/releases/tag/v1.0.9
 [v1.0.8]: https://github.com/larksuite/cli/releases/tag/v1.0.8
 [v1.0.7]: https://github.com/larksuite/cli/releases/tag/v1.0.7
