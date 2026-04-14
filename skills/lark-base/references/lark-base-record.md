@@ -14,6 +14,8 @@ record 相关命令索引。
 | [lark-base-record-upsert.md](lark-base-record-upsert.md) | `+record-upsert` | 创建或更新记录 |
 | [lark-base-record-batch-create.md](lark-base-record-batch-create.md) | `+record-batch-create` | 按 `fields/rows` 批量创建记录 |
 | [lark-base-record-batch-update.md](lark-base-record-batch-update.md) | `+record-batch-update` | 批量更新记录 |
+| [lark-base-record-share-link-create.md](lark-base-record-share-link-create.md) | `+record-share-link-create` | 为单条记录生成分享链接 |
+| [lark-base-record-share-link-batch-create.md](lark-base-record-share-link-batch-create.md) | `+record-share-link-batch-create` | 批量生成记录分享链接（最多 100 条） |
 | [lark-base-record-upload-attachment.md](lark-base-record-upload-attachment.md) | `+record-upload-attachment` | 上传本地文件到附件字段并更新记录 |
 | [`../../lark-doc/references/lark-doc-media-download.md`](../../lark-doc/references/lark-doc-media-download.md) | `lark-cli docs +media-download` | 下载 Base 附件到本地（附件的 `file_token` 来自 `+record-get` 的附件字段） |
 | [lark-base-record-delete.md](lark-base-record-delete.md) | `+record-delete` | 删除记录 |
