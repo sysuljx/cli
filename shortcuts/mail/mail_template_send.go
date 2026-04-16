@@ -148,9 +148,11 @@ func mergeTemplateSendFields(runtime *common.RuntimeContext, tmpl map[string]int
 	merged := templateSendFields{
 		Subject:   coalesceStr(runtime.Str("subject"), strVal(tmpl["subject"])),
 		Body:      coalesceStr(runtime.Str("body"), strVal(tmpl["body_html"])),
-		To:        coalesceStr(runtime.Str("to"), stringifyTemplateAddressList(tmpl["to"])),
-		CC:        coalesceStr(runtime.Str("cc"), stringifyTemplateAddressList(tmpl["cc"])),
-		BCC:       coalesceStr(runtime.Str("bcc"), stringifyTemplateAddressList(tmpl["bcc"])),
+		// Server returns address lists under the plural keys per IDL
+		// (Template.Tos/Ccs/Bccs api.json = "tos"/"ccs"/"bccs").
+		To:        coalesceStr(runtime.Str("to"), stringifyTemplateAddressList(tmpl["tos"])),
+		CC:        coalesceStr(runtime.Str("cc"), stringifyTemplateAddressList(tmpl["ccs"])),
+		BCC:       coalesceStr(runtime.Str("bcc"), stringifyTemplateAddressList(tmpl["bccs"])),
 		PlainText: boolVal(tmpl["is_plain_text_mode"]),
 	}
 	if strings.TrimSpace(merged.To) == "" {

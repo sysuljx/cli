@@ -69,7 +69,11 @@ var MailTemplateUpdate = common.Shortcut{
 		}
 		mergeTemplateUpdateFlags(runtime, tmpl)
 
-		data, err := runtime.CallAPI("PUT", mailboxPath(mailboxID, "templates", templateID), nil, tmpl)
+		// Per IDL (UpdateUserMailboxTemplateRequest.Template has
+		// api.body="template"), the PUT body must wrap the template under
+		// the "template" key.
+		putBody := map[string]interface{}{"template": tmpl}
+		data, err := runtime.CallAPI("PUT", mailboxPath(mailboxID, "templates", templateID), nil, putBody)
 		if err != nil {
 			return output.Errorf(output.ExitAPI, "api_error", "update template failed: %s", err)
 		}
@@ -100,13 +104,14 @@ func mergeTemplateUpdateFlags(runtime *common.RuntimeContext, tmpl map[string]in
 	if runtime.Bool("plain-text") {
 		tmpl["is_plain_text_mode"] = true
 	}
+	// Address list keys are plural per IDL (Template.Tos/Ccs/Bccs api.json).
 	if to := runtime.Str("to"); to != "" {
-		tmpl["to"] = parseAddressListForAPI(to)
+		tmpl["tos"] = parseAddressListForAPI(to)
 	}
 	if cc := runtime.Str("cc"); cc != "" {
-		tmpl["cc"] = parseAddressListForAPI(cc)
+		tmpl["ccs"] = parseAddressListForAPI(cc)
 	}
 	if bcc := runtime.Str("bcc"); bcc != "" {
-		tmpl["bcc"] = parseAddressListForAPI(bcc)
+		tmpl["bccs"] = parseAddressListForAPI(bcc)
 	}
 }

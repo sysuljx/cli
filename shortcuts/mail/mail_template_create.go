@@ -70,35 +70,41 @@ var MailTemplateCreate = common.Shortcut{
 }
 
 // buildTemplateCreateBody assembles the JSON body for +template-create.
-// The value of --body is always written to body_html so that the server
-// receives the user-supplied content (see verification report TPL-CREATE-01).
+// Per IDL (CreateUserMailboxTemplateRequest.Template has api.body="template"),
+// the outer request body is {"template": {...inner...}}. Inside the inner
+// object, the address fields use the plural keys tos/ccs/bccs to match
+// Template.Tos/Ccs/Bccs (api.json = "tos"/"ccs"/"bccs").
+//
+// The value of --body is always written to the inner body_html field so that
+// the server receives the user-supplied content (see verification report
+// TPL-CREATE-01).
 func buildTemplateCreateBody(runtime *common.RuntimeContext) map[string]interface{} {
-	body := map[string]interface{}{
+	inner := map[string]interface{}{
 		"name": runtime.Str("name"),
 	}
 	if s := runtime.Str("subject"); s != "" {
-		body["subject"] = s
+		inner["subject"] = s
 	}
 	// --body is the user's email body. It must be written to the
 	// request body's body_html field — the server uses body_html for both
 	// HTML and plain-text bodies, with is_plain_text_mode toggling the
 	// rendering mode.
 	if b := runtime.Str("body"); b != "" {
-		body["body_html"] = b
+		inner["body_html"] = b
 	}
 	if runtime.Bool("plain-text") {
-		body["is_plain_text_mode"] = true
+		inner["is_plain_text_mode"] = true
 	}
 	if to := runtime.Str("to"); to != "" {
-		body["to"] = parseAddressListForAPI(to)
+		inner["tos"] = parseAddressListForAPI(to)
 	}
 	if cc := runtime.Str("cc"); cc != "" {
-		body["cc"] = parseAddressListForAPI(cc)
+		inner["ccs"] = parseAddressListForAPI(cc)
 	}
 	if bcc := runtime.Str("bcc"); bcc != "" {
-		body["bcc"] = parseAddressListForAPI(bcc)
+		inner["bccs"] = parseAddressListForAPI(bcc)
 	}
-	return body
+	return map[string]interface{}{"template": inner}
 }
 
 // parseAddressListForAPI converts a comma-separated recipient string into the

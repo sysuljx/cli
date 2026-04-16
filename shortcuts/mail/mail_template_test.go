@@ -176,20 +176,24 @@ func TestBuildTemplateCreateBody_BodyFlagWritesToBodyHtml(t *testing.T) {
 		"body":    "<p>Hi Alice</p>",
 	})
 	body := buildTemplateCreateBody(runtime)
-	got, ok := body["body_html"].(string)
+	inner, ok := body["template"].(map[string]interface{})
 	if !ok {
-		t.Fatalf("body_html missing or not string in request body: %#v", body)
+		t.Fatalf("expected body[\"template\"] to be a map (IDL api.body=\"template\"): %#v", body)
+	}
+	got, ok := inner["body_html"].(string)
+	if !ok {
+		t.Fatalf("body_html missing or not string in inner template: %#v", inner)
 	}
 	if got != "<p>Hi Alice</p>" {
 		t.Fatalf("body_html = %q, want the exact --body value", got)
 	}
-	if body["name"] != "regression" {
-		t.Fatalf("name mismatch: %#v", body["name"])
+	if inner["name"] != "regression" {
+		t.Fatalf("name mismatch: %#v", inner["name"])
 	}
-	if body["subject"] != "hello" {
-		t.Fatalf("subject mismatch: %#v", body["subject"])
+	if inner["subject"] != "hello" {
+		t.Fatalf("subject mismatch: %#v", inner["subject"])
 	}
-	if _, hasPlain := body["is_plain_text_mode"]; hasPlain {
+	if _, hasPlain := inner["is_plain_text_mode"]; hasPlain {
 		t.Fatalf("is_plain_text_mode should be absent when --plain-text is not set")
 	}
 }
@@ -199,12 +203,20 @@ func TestBuildTemplateCreateBody_OmitsEmptyFields(t *testing.T) {
 		"name": "only-name",
 	})
 	body := buildTemplateCreateBody(runtime)
-	if body["name"] != "only-name" {
-		t.Fatalf("name mismatch: %#v", body)
+	// Outer map should only contain the "template" wrapper.
+	if len(body) != 1 {
+		t.Fatalf("outer body should only contain the \"template\" key: %#v", body)
 	}
-	for _, key := range []string{"subject", "body_html", "to", "cc", "bcc", "is_plain_text_mode"} {
-		if _, ok := body[key]; ok {
-			t.Fatalf("unexpected %q in minimal body: %#v", key, body)
+	inner, ok := body["template"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected body[\"template\"] to be a map: %#v", body)
+	}
+	if inner["name"] != "only-name" {
+		t.Fatalf("name mismatch: %#v", inner)
+	}
+	for _, key := range []string{"subject", "body_html", "tos", "ccs", "bccs", "is_plain_text_mode"} {
+		if _, ok := inner[key]; ok {
+			t.Fatalf("unexpected %q in minimal inner body: %#v", key, inner)
 		}
 	}
 }
@@ -219,23 +231,27 @@ func TestBuildTemplateCreateBody_IncludesRecipientsAndPlainText(t *testing.T) {
 		"body":       "plaintext content",
 	})
 	body := buildTemplateCreateBody(runtime)
-	if body["is_plain_text_mode"] != true {
-		t.Fatalf("is_plain_text_mode = %#v, want true", body["is_plain_text_mode"])
+	inner, ok := body["template"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected body[\"template\"] to be a map: %#v", body)
 	}
-	if body["body_html"] != "plaintext content" {
-		t.Fatalf("body_html should be the --body value even with --plain-text; got %#v", body["body_html"])
+	if inner["is_plain_text_mode"] != true {
+		t.Fatalf("is_plain_text_mode = %#v, want true", inner["is_plain_text_mode"])
 	}
-	to, ok := body["to"].([]map[string]interface{})
-	if !ok || len(to) != 1 || to[0]["mail_address"] != "alice@example.com" {
-		t.Fatalf("to mismatch: %#v", body["to"])
+	if inner["body_html"] != "plaintext content" {
+		t.Fatalf("body_html should be the --body value even with --plain-text; got %#v", inner["body_html"])
 	}
-	cc, ok := body["cc"].([]map[string]interface{})
-	if !ok || len(cc) != 1 || cc[0]["mail_address"] != "bob@example.com" || cc[0]["name"] != "Bob" {
-		t.Fatalf("cc mismatch: %#v", body["cc"])
+	tos, ok := inner["tos"].([]map[string]interface{})
+	if !ok || len(tos) != 1 || tos[0]["mail_address"] != "alice@example.com" {
+		t.Fatalf("tos mismatch: %#v", inner["tos"])
 	}
-	bcc, ok := body["bcc"].([]map[string]interface{})
-	if !ok || len(bcc) != 1 || bcc[0]["mail_address"] != "carol@example.com" {
-		t.Fatalf("bcc mismatch: %#v", body["bcc"])
+	ccs, ok := inner["ccs"].([]map[string]interface{})
+	if !ok || len(ccs) != 1 || ccs[0]["mail_address"] != "bob@example.com" || ccs[0]["name"] != "Bob" {
+		t.Fatalf("ccs mismatch: %#v", inner["ccs"])
+	}
+	bccs, ok := inner["bccs"].([]map[string]interface{})
+	if !ok || len(bccs) != 1 || bccs[0]["mail_address"] != "carol@example.com" {
+		t.Fatalf("bccs mismatch: %#v", inner["bccs"])
 	}
 }
 
@@ -402,8 +418,12 @@ func TestMailTemplateCreateDryRun(t *testing.T) {
 	if body == nil {
 		t.Fatalf("expected body in dry-run, got %#v", calls[0].Body)
 	}
-	if body["body_html"] != "<p>b</p>" {
-		t.Fatalf("body_html not in dry-run body: %#v", body)
+	inner, ok := body["template"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected body[\"template\"] wrapper in dry-run body: %#v", body)
+	}
+	if inner["body_html"] != "<p>b</p>" {
+		t.Fatalf("body_html not in dry-run inner body: %#v", inner)
 	}
 }
 
@@ -493,10 +513,11 @@ func TestMergeTemplateSendFields_UsesTemplateDefaultsWhenFlagsEmpty(t *testing.T
 		"subject":            "Tmpl subject",
 		"body_html":          "<p>Tmpl body</p>",
 		"is_plain_text_mode": false,
-		"to": []interface{}{
+		// Server returns plural keys per IDL (Template.Tos/Ccs/Bccs api.json).
+		"tos": []interface{}{
 			map[string]interface{}{"mail_address": "alice@example.com", "name": "Alice"},
 		},
-		"cc": []interface{}{
+		"ccs": []interface{}{
 			map[string]interface{}{"mail_address": "cc@example.com"},
 		},
 	}
@@ -531,7 +552,7 @@ func TestMergeTemplateSendFields_FlagsOverrideTemplate(t *testing.T) {
 	tmpl := map[string]interface{}{
 		"subject":   "Tmpl subject",
 		"body_html": "<p>Tmpl body</p>",
-		"to": []interface{}{
+		"tos": []interface{}{
 			map[string]interface{}{"mail_address": "alice@example.com"},
 		},
 	}
@@ -624,9 +645,9 @@ func TestMergeTemplateUpdateFlags_OverlaysNonEmptyFields(t *testing.T) {
 	if tmpl["body_html"] != "<p>new</p>" {
 		t.Errorf("body_html not overlayed: %#v", tmpl["body_html"])
 	}
-	to, ok := tmpl["to"].([]map[string]interface{})
-	if !ok || len(to) != 1 || to[0]["mail_address"] != "x@example.com" {
-		t.Errorf("to not overlayed: %#v", tmpl["to"])
+	tos, ok := tmpl["tos"].([]map[string]interface{})
+	if !ok || len(tos) != 1 || tos[0]["mail_address"] != "x@example.com" {
+		t.Errorf("tos not overlayed: %#v", tmpl["tos"])
 	}
 }
 
@@ -701,22 +722,26 @@ func TestMailTemplateCreate_E2E_WritesBodyHtml(t *testing.T) {
 	if err := json.Unmarshal(createStub.CapturedBody, &captured); err != nil {
 		t.Fatalf("unmarshal captured body: %v (raw=%s)", err, string(createStub.CapturedBody))
 	}
-	if got := captured["body_html"]; got != "<p>Body from CLI</p>" {
-		t.Fatalf("captured body_html = %#v, want the --body value", got)
+	inner, ok := captured["template"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("captured top-level is missing \"template\" wrapper (IDL api.body=\"template\"): %#v", captured)
 	}
-	if captured["name"] != "My Tpl" {
-		t.Errorf("captured name = %#v", captured["name"])
+	if got := inner["body_html"]; got != "<p>Body from CLI</p>" {
+		t.Fatalf("captured template.body_html = %#v, want the --body value", got)
 	}
-	if captured["subject"] != "hello" {
-		t.Errorf("captured subject = %#v", captured["subject"])
+	if inner["name"] != "My Tpl" {
+		t.Errorf("captured template.name = %#v", inner["name"])
 	}
-	toList, ok := captured["to"].([]interface{})
+	if inner["subject"] != "hello" {
+		t.Errorf("captured template.subject = %#v", inner["subject"])
+	}
+	toList, ok := inner["tos"].([]interface{})
 	if !ok || len(toList) == 0 {
-		t.Fatalf("to missing in captured body: %#v", captured["to"])
+		t.Fatalf("tos missing in captured inner body: %#v", inner["tos"])
 	}
 	first, _ := toList[0].(map[string]interface{})
 	if first["mail_address"] != "alice@example.com" {
-		t.Errorf("to[0].mail_address = %#v", first["mail_address"])
+		t.Errorf("tos[0].mail_address = %#v", first["mail_address"])
 	}
 
 	data := decodeShortcutEnvelopeData(t, stdout)
@@ -829,14 +854,18 @@ func TestMailTemplateUpdate_E2E_MergesBeforePut(t *testing.T) {
 	if err := json.Unmarshal(putStub.CapturedBody, &captured); err != nil {
 		t.Fatalf("unmarshal captured PUT body: %v", err)
 	}
-	if captured["name"] != "new-name" {
-		t.Errorf("PUT name = %#v, want new-name", captured["name"])
+	inner, ok := captured["template"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("captured PUT body is missing \"template\" wrapper (IDL api.body=\"template\"): %#v", captured)
+	}
+	if inner["name"] != "new-name" {
+		t.Errorf("PUT template.name = %#v, want new-name", inner["name"])
 	}
 	// subject should be preserved from the GET response (merge semantics)
-	if captured["subject"] != "old-subject" {
-		t.Errorf("PUT should preserve unspecified subject, got %#v", captured["subject"])
+	if inner["subject"] != "old-subject" {
+		t.Errorf("PUT should preserve unspecified subject, got %#v", inner["subject"])
 	}
-	if captured["body_html"] != "<p>old</p>" {
-		t.Errorf("PUT should preserve unspecified body_html, got %#v", captured["body_html"])
+	if inner["body_html"] != "<p>old</p>" {
+		t.Errorf("PUT should preserve unspecified body_html, got %#v", inner["body_html"])
 	}
 }
