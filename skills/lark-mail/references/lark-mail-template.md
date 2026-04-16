@@ -43,7 +43,7 @@
 |------|------|------|
 | `--name <name>` | 是 | 模板名称（≤ 100 字符） |
 | `--subject <subject>` | 否 | 邮件主题 |
-| `--body <body>` | 否 | 邮件正文（HTML 或纯文本，自动识别）。该值会原样写入请求体的 `body_html` 字段 |
+| `--body <body>` | 否 | 邮件正文（HTML 或纯文本，自动识别）。该值会原样写入请求体 `template.body_html` 字段 |
 | `--to <list>` | 否 | 默认收件人（逗号分隔，支持 `Name <email>` 格式） |
 | `--cc <list>` | 否 | 默认抄送 |
 | `--bcc <list>` | 否 | 默认密送 |
@@ -176,6 +176,24 @@ lark-cli mail +template-delete --as user --template-id <id>
     "message_id": "<message_id>",
     "thread_id": "<thread_id>",
     "template_id": "<id>"
+  }
+}
+```
+
+## 请求体格式（CREATE / UPDATE）
+
+CLI 在发出 POST/PUT 请求时会将模板字段包裹在 `template` 下，以对齐 IDL `api.body="template"` 契约。地址数组字段 JSON key 为 `tos`/`ccs`/`bccs`（CLI 侧仍用 `--to`/`--cc`/`--bcc`）。
+
+```json
+{
+  "template": {
+    "name": "周报模板",
+    "subject": "周报 - {{date}}",
+    "body_html": "<h2>本周工作</h2><ul><li>...</li></ul>",
+    "is_plain_text_mode": false,
+    "tos": [{"mail_address": "alice@example.com", "name": "Alice"}],
+    "ccs": [{"mail_address": "bob@example.com"}],
+    "bccs": []
   }
 }
 ```

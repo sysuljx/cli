@@ -47,11 +47,13 @@ var MailTemplateCreate = common.Shortcut{
 		return common.NewDryRunAPI().
 			Desc("Create a new email template").
 			POST(mailboxPath(mailboxID, "templates")).
-			Body(buildTemplateCreateBody(runtime))
+			Body(map[string]interface{}{"template": buildTemplateCreateBody(runtime)})
 	},
 	Execute: func(ctx context.Context, runtime *common.RuntimeContext) error {
 		mailboxID := resolveMailboxID(runtime)
-		body := buildTemplateCreateBody(runtime)
+		// Wrap the template object per IDL api.body="template" annotation so
+		// that apigw unwraps it into CreateUserMailboxTemplateRequest.Template.
+		body := map[string]interface{}{"template": buildTemplateCreateBody(runtime)}
 		data, err := runtime.CallAPI("POST", mailboxPath(mailboxID, "templates"), nil, body)
 		if err != nil {
 			return output.Errorf(output.ExitAPI, "api_error", "create template failed: %s", err)
@@ -89,14 +91,17 @@ func buildTemplateCreateBody(runtime *common.RuntimeContext) map[string]interfac
 	if runtime.Bool("plain-text") {
 		body["is_plain_text_mode"] = true
 	}
+	// Address list JSON keys match the IDL Template struct's api.json
+	// annotations (tos/ccs/bccs), while the --to/--cc/--bcc CLI flag names
+	// stay singular for a stable user surface.
 	if to := runtime.Str("to"); to != "" {
-		body["to"] = parseAddressListForAPI(to)
+		body["tos"] = parseAddressListForAPI(to)
 	}
 	if cc := runtime.Str("cc"); cc != "" {
-		body["cc"] = parseAddressListForAPI(cc)
+		body["ccs"] = parseAddressListForAPI(cc)
 	}
 	if bcc := runtime.Str("bcc"); bcc != "" {
-		body["bcc"] = parseAddressListForAPI(bcc)
+		body["bccs"] = parseAddressListForAPI(bcc)
 	}
 	return body
 }

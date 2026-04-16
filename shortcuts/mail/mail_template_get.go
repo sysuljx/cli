@@ -54,11 +54,14 @@ var MailTemplateGet = common.Shortcut{
 			fmt.Fprintf(w, "Template: %s\n", strVal(tmpl["name"]))
 			fmt.Fprintf(w, "Subject:  %s\n", strVal(tmpl["subject"]))
 			fmt.Fprintf(w, "ID:       %s\n", strVal(tmpl["template_id"]))
-			if to := tmpl["to"]; to != nil {
+			if to := tmpl["tos"]; to != nil {
 				fmt.Fprintf(w, "To:       %s\n", describeAddressField(to))
 			}
-			if cc := tmpl["cc"]; cc != nil {
+			if cc := tmpl["ccs"]; cc != nil {
 				fmt.Fprintf(w, "Cc:       %s\n", describeAddressField(cc))
+			}
+			if bcc := tmpl["bccs"]; bcc != nil {
+				fmt.Fprintf(w, "Bcc:      %s\n", describeAddressField(bcc))
 			}
 		})
 		return nil

@@ -168,7 +168,7 @@ func TestCoalesceStr(t *testing.T) {
 
 // TestBuildTemplateCreateBody_BodyFlagWritesToBodyHtml is the direct regression
 // test for the verification report item TPL-CREATE-01: the --body flag MUST be
-// written to the request body's body_html field.
+// written to the inner template object's body_html field.
 func TestBuildTemplateCreateBody_BodyFlagWritesToBodyHtml(t *testing.T) {
 	runtime := runtimeForMailTemplateTest(t, MailTemplateCreate, map[string]string{
 		"name":    "regression",
@@ -202,7 +202,7 @@ func TestBuildTemplateCreateBody_OmitsEmptyFields(t *testing.T) {
 	if body["name"] != "only-name" {
 		t.Fatalf("name mismatch: %#v", body)
 	}
-	for _, key := range []string{"subject", "body_html", "to", "cc", "bcc", "is_plain_text_mode"} {
+	for _, key := range []string{"subject", "body_html", "tos", "ccs", "bccs", "is_plain_text_mode"} {
 		if _, ok := body[key]; ok {
 			t.Fatalf("unexpected %q in minimal body: %#v", key, body)
 		}
@@ -225,17 +225,17 @@ func TestBuildTemplateCreateBody_IncludesRecipientsAndPlainText(t *testing.T) {
 	if body["body_html"] != "plaintext content" {
 		t.Fatalf("body_html should be the --body value even with --plain-text; got %#v", body["body_html"])
 	}
-	to, ok := body["to"].([]map[string]interface{})
-	if !ok || len(to) != 1 || to[0]["mail_address"] != "alice@example.com" {
-		t.Fatalf("to mismatch: %#v", body["to"])
+	tos, ok := body["tos"].([]map[string]interface{})
+	if !ok || len(tos) != 1 || tos[0]["mail_address"] != "alice@example.com" {
+		t.Fatalf("tos mismatch: %#v", body["tos"])
 	}
-	cc, ok := body["cc"].([]map[string]interface{})
-	if !ok || len(cc) != 1 || cc[0]["mail_address"] != "bob@example.com" || cc[0]["name"] != "Bob" {
-		t.Fatalf("cc mismatch: %#v", body["cc"])
+	ccs, ok := body["ccs"].([]map[string]interface{})
+	if !ok || len(ccs) != 1 || ccs[0]["mail_address"] != "bob@example.com" || ccs[0]["name"] != "Bob" {
+		t.Fatalf("ccs mismatch: %#v", body["ccs"])
 	}
-	bcc, ok := body["bcc"].([]map[string]interface{})
-	if !ok || len(bcc) != 1 || bcc[0]["mail_address"] != "carol@example.com" {
-		t.Fatalf("bcc mismatch: %#v", body["bcc"])
+	bccs, ok := body["bccs"].([]map[string]interface{})
+	if !ok || len(bccs) != 1 || bccs[0]["mail_address"] != "carol@example.com" {
+		t.Fatalf("bccs mismatch: %#v", body["bccs"])
 	}
 }
 
@@ -392,18 +392,40 @@ func TestMailTemplateCreateDryRun(t *testing.T) {
 		"name":    "n",
 		"subject": "s",
 		"body":    "<p>b</p>",
+		"to":      "alice@example.com",
 	})
 	dry := MailTemplateCreate.DryRun(context.Background(), runtime)
 	calls := dryRunAPIsForMailTemplateTest(t, dry)
 	if len(calls) != 1 || calls[0].Method != "POST" {
 		t.Fatalf("unexpected dry-run calls: %#v", calls)
 	}
-	body, _ := calls[0].Body.(map[string]interface{})
-	if body == nil {
+	// The HTTP body must wrap the template object per IDL api.body="template":
+	//   {"template": {"name": "...", "body_html": "...", "tos": [...]}}
+	wrap, _ := calls[0].Body.(map[string]interface{})
+	if wrap == nil {
 		t.Fatalf("expected body in dry-run, got %#v", calls[0].Body)
 	}
-	if body["body_html"] != "<p>b</p>" {
-		t.Fatalf("body_html not in dry-run body: %#v", body)
+	inner, ok := wrap["template"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("dry-run body should be wrapped under \"template\"; got %#v", wrap)
+	}
+	if inner["body_html"] != "<p>b</p>" {
+		t.Fatalf("body_html not in wrapped template: %#v", inner)
+	}
+	if inner["name"] != "n" || inner["subject"] != "s" {
+		t.Fatalf("inner name/subject mismatch: %#v", inner)
+	}
+	// After json round-trip the array element type is []interface{} of map[string]interface{}.
+	tos, ok := inner["tos"].([]interface{})
+	if !ok || len(tos) != 1 {
+		t.Fatalf("inner tos mismatch: %#v", inner["tos"])
+	}
+	firstTo, _ := tos[0].(map[string]interface{})
+	if firstTo["mail_address"] != "alice@example.com" {
+		t.Fatalf("inner tos[0].mail_address = %#v", firstTo["mail_address"])
+	}
+	if _, flat := wrap["body_html"]; flat {
+		t.Fatalf("dry-run body must not be flat; got body_html at top level: %#v", wrap)
 	}
 }
 
@@ -624,9 +646,9 @@ func TestMergeTemplateUpdateFlags_OverlaysNonEmptyFields(t *testing.T) {
 	if tmpl["body_html"] != "<p>new</p>" {
 		t.Errorf("body_html not overlayed: %#v", tmpl["body_html"])
 	}
-	to, ok := tmpl["to"].([]map[string]interface{})
-	if !ok || len(to) != 1 || to[0]["mail_address"] != "x@example.com" {
-		t.Errorf("to not overlayed: %#v", tmpl["to"])
+	tos, ok := tmpl["tos"].([]map[string]interface{})
+	if !ok || len(tos) != 1 || tos[0]["mail_address"] != "x@example.com" {
+		t.Errorf("tos not overlayed: %#v", tmpl["tos"])
 	}
 }
 
@@ -697,9 +719,15 @@ func TestMailTemplateCreate_E2E_WritesBodyHtml(t *testing.T) {
 		t.Fatalf("runMountedMailShortcut: %v", err)
 	}
 
-	var captured map[string]interface{}
-	if err := json.Unmarshal(createStub.CapturedBody, &captured); err != nil {
+	var wrap map[string]interface{}
+	if err := json.Unmarshal(createStub.CapturedBody, &wrap); err != nil {
 		t.Fatalf("unmarshal captured body: %v (raw=%s)", err, string(createStub.CapturedBody))
+	}
+	// HTTP body must be wrapped per IDL api.body="template":
+	//   {"template": {"name": "...", "tos": [{...}]}}
+	captured, ok := wrap["template"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("captured body is not wrapped under \"template\": %s", string(createStub.CapturedBody))
 	}
 	if got := captured["body_html"]; got != "<p>Body from CLI</p>" {
 		t.Fatalf("captured body_html = %#v, want the --body value", got)
@@ -710,13 +738,13 @@ func TestMailTemplateCreate_E2E_WritesBodyHtml(t *testing.T) {
 	if captured["subject"] != "hello" {
 		t.Errorf("captured subject = %#v", captured["subject"])
 	}
-	toList, ok := captured["to"].([]interface{})
-	if !ok || len(toList) == 0 {
-		t.Fatalf("to missing in captured body: %#v", captured["to"])
+	tosList, ok := captured["tos"].([]interface{})
+	if !ok || len(tosList) == 0 {
+		t.Fatalf("tos missing in captured template: %#v", captured["tos"])
 	}
-	first, _ := toList[0].(map[string]interface{})
+	first, _ := tosList[0].(map[string]interface{})
 	if first["mail_address"] != "alice@example.com" {
-		t.Errorf("to[0].mail_address = %#v", first["mail_address"])
+		t.Errorf("tos[0].mail_address = %#v", first["mail_address"])
 	}
 
 	data := decodeShortcutEnvelopeData(t, stdout)
@@ -825,9 +853,14 @@ func TestMailTemplateUpdate_E2E_MergesBeforePut(t *testing.T) {
 		t.Fatalf("runMountedMailShortcut: %v", err)
 	}
 
-	var captured map[string]interface{}
-	if err := json.Unmarshal(putStub.CapturedBody, &captured); err != nil {
+	var wrap map[string]interface{}
+	if err := json.Unmarshal(putStub.CapturedBody, &wrap); err != nil {
 		t.Fatalf("unmarshal captured PUT body: %v", err)
+	}
+	// PUT body must be wrapped per IDL api.body="template".
+	captured, ok := wrap["template"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("captured PUT body is not wrapped under \"template\": %s", string(putStub.CapturedBody))
 	}
 	if captured["name"] != "new-name" {
 		t.Errorf("PUT name = %#v, want new-name", captured["name"])

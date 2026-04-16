@@ -69,7 +69,10 @@ var MailTemplateUpdate = common.Shortcut{
 		}
 		mergeTemplateUpdateFlags(runtime, tmpl)
 
-		data, err := runtime.CallAPI("PUT", mailboxPath(mailboxID, "templates", templateID), nil, tmpl)
+		// Wrap the merged template object per IDL api.body="template" so the
+		// apigw routes the payload into the PUT request's Template field.
+		putBody := map[string]interface{}{"template": tmpl}
+		data, err := runtime.CallAPI("PUT", mailboxPath(mailboxID, "templates", templateID), nil, putBody)
 		if err != nil {
 			return output.Errorf(output.ExitAPI, "api_error", "update template failed: %s", err)
 		}
@@ -100,13 +103,15 @@ func mergeTemplateUpdateFlags(runtime *common.RuntimeContext, tmpl map[string]in
 	if runtime.Bool("plain-text") {
 		tmpl["is_plain_text_mode"] = true
 	}
+	// Address list JSON keys align with the IDL Template struct
+	// (api.json="tos"/"ccs"/"bccs"); CLI flags remain singular.
 	if to := runtime.Str("to"); to != "" {
-		tmpl["to"] = parseAddressListForAPI(to)
+		tmpl["tos"] = parseAddressListForAPI(to)
 	}
 	if cc := runtime.Str("cc"); cc != "" {
-		tmpl["cc"] = parseAddressListForAPI(cc)
+		tmpl["ccs"] = parseAddressListForAPI(cc)
 	}
 	if bcc := runtime.Str("bcc"); bcc != "" {
-		tmpl["bcc"] = parseAddressListForAPI(bcc)
+		tmpl["bccs"] = parseAddressListForAPI(bcc)
 	}
 }
