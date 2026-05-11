@@ -2085,12 +2085,10 @@ func applyPriority(bld emlbuilder.Builder, priority string) emlbuilder.Builder {
 }
 
 // sendSeparatelyEmlHeader is the EML header injected when a compose
-// shortcut is invoked with --send-separately. Backend data-access parses
-// this header in headersToPbBodyExtra and translates it into the
-// BodyExtra.IsSendSeparately field; smtp-out-mail-out then splits the
-// envelope into per-recipient copies at delivery time so each recipient
-// only sees themselves in the To/Cc header. Bcc visibility is
-// unaffected.
+// shortcut is invoked with --send-separately. The mail backend reads
+// this header at send time and splits the envelope into per-recipient
+// copies so each recipient only sees themselves in the To/Cc header.
+// Bcc visibility is unaffected.
 const sendSeparatelyEmlHeader = "X-Lms-Send-Separately"
 
 // isMailErrno6002 reports whether err carries the Lark mail backend's
