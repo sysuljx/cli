@@ -36,6 +36,9 @@ lark-cli mail +draft-create --to alice@example.com --subject '简短通知' --bo
 
 # Dry Run（仅打印请求，不执行）
 lark-cli mail +draft-create --to alice@example.com --subject '测试' --body 'test' --dry-run
+
+# 分别发送：发送时每个收件人只看到自己
+lark-cli mail +draft-create --to alice@example.com,bob@example.com --subject '周报' --body '<p>本周进展</p>' --send-separately
 ```
 
 ## 参数
@@ -55,6 +58,7 @@ lark-cli mail +draft-create --to alice@example.com --subject '测试' --body 'te
 | `--signature-id <id>` | 否 | 签名 ID。附加邮箱签名到正文末尾。运行 `mail +signature` 查看可用签名。不可与 `--plain-text` 同时使用 |
 | `--priority <level>` | 否 | 邮件优先级：`high`、`normal`、`low`。省略或 `normal` 时不设置优先级 |
 | `--request-receipt` | 否 | 请求已读回执（RFC 3798 Message Disposition Notification）。在草稿 EML 里写 `Disposition-Notification-To: <sender>` 头，发送时生效。收件人的邮件客户端可能弹出提示、自动发送或忽略——送达不保证 |
+| `--send-separately` | 否 | 标记草稿为「分别发送」：发送时每个 To/Cc 收件人收到的副本里只看见自己，看不到其他 To/Cc 收件人。仅在 EML 里写 `X-Lms-Send-Separately: 1` 头，发送时由服务端拆分投递。可与 `--cc`/`--bcc`/`--attach`/`--inline`/`--plain-text`/`--template-id`/`--request-receipt`/`--signature-id`/`--priority` 全部叠加；与"分别发送 vs BCC"对比见下方说明。总收件人数为 1 时会打 warning（不拒绝） |
 | `--event-summary <text>` | 否 | 日程标题。设置此参数即在邮件中嵌入日程邀请。需同时设置 `--event-start` 和 `--event-end` |
 | `--event-start <time>` | 条件必填 | 日程开始时间（ISO 8601） |
 | `--event-end <time>` | 条件必填 | 日程结束时间（ISO 8601） |
@@ -115,9 +119,22 @@ lark-cli mail +draft-create \
   --inline '[{"cid":"c7d8e9f0a1b2c3d4e5f6","file_path":"./banner.png"}]'
 ```
 
+## 分别发送 vs BCC
+
+`--send-separately` 与 `--bcc` 是两种容易混淆但语义不同的"隐藏收件人"机制，选择哪一种要看用户实际诉求：
+
+| 维度 | `--send-separately` | `--bcc` |
+|---|---|---|
+| 投递逻辑 | 服务端按 To/Cc 列表逐人拆发；每人收到一份独立副本 | 单次投递，To/Cc + Bcc 都会拿到同一封邮件 |
+| 收件人看到的 To/Cc | 只看见自己（其它 To/Cc 在该副本里被剥离） | 看到完整的 To/Cc 列表（Bcc 收件人不可见） |
+| 是否隐藏对方存在 | ✅ To/Cc 之间互相不可见 | ❌ To/Cc 互相可见；只是 Bcc 收件人对所有人不可见 |
+| 典型场景 | 群发周报 / 通知 / 邀约，不希望收件人看到彼此 | 抄送一份给自己 / 审计方，不打扰主收件人列表 |
+
+两者可以叠加：`--send-separately --bcc audit@example.com` 时，audit 拿到原始 To/Cc 列表的整封邮件，其他 To/Cc 仍按"分别发送"语义拆开。
+
 ## 相关命令
 
-- `lark-cli mail +draft-edit` — 编辑已有草稿
+- `lark-cli mail +draft-edit` — 编辑已有草稿（含 `set_send_separately` patch op）
 - `lark-cli mail user_mailbox.drafts send` — 发送已有草稿
 - `lark-cli mail user_mailbox.drafts get` — 获取草稿内容
 - `lark-cli mail +reply` / `+reply-all` / `+forward` — 创建回复/转发草稿（默认），或加 `--confirm-send` 发送

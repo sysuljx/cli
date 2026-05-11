@@ -420,3 +420,152 @@ func TestMailDraftCreate_WithCalendarEventFlags(t *testing.T) {
 		t.Errorf("expected event summary in ICS:\n%s", eml)
 	}
 }
+
+// TestBuildRawEMLForDraftCreate_SendSeparatelyAddsHeader verifies that
+// passing SendSeparately=true injects the X-Lms-Send-Separately: 1
+// header into the EML built by buildRawEMLForDraftCreate. Mirrors the
+// shape of TestBuildRawEMLForDraftCreate_WithPriority.
+func TestBuildRawEMLForDraftCreate_SendSeparatelyAddsHeader(t *testing.T) {
+	input := draftCreateInput{
+		From:           "sender@example.com",
+		To:             "alice@example.com,bob@example.com",
+		Subject:        "separately test",
+		Body:           `<p>Hello</p>`,
+		SendSeparately: true,
+	}
+
+	rawEML, err := buildRawEMLForDraftCreate(context.Background(), newRuntimeWithFrom("sender@example.com"), input, nil, "", nil, "", "", nil, nil)
+	if err != nil {
+		t.Fatalf("buildRawEMLForDraftCreate() error = %v", err)
+	}
+	eml := decodeBase64URL(rawEML)
+	if !strings.Contains(eml, "X-Lms-Send-Separately: 1") {
+		t.Errorf("expected X-Lms-Send-Separately: 1 in EML, got:\n%s", eml)
+	}
+	// Verify only emitted once (Builder.Header appends; a regression that
+	// double-injects would surface here).
+	if c := strings.Count(eml, "X-Lms-Send-Separately"); c != 1 {
+		t.Errorf("expected X-Lms-Send-Separately to appear exactly 1 time, got %d", c)
+	}
+}
+
+// TestBuildRawEMLForDraftCreate_SendSeparatelyOmittedByDefault verifies
+// the header is absent when SendSeparately is false (the zero value).
+func TestBuildRawEMLForDraftCreate_SendSeparatelyOmittedByDefault(t *testing.T) {
+	input := draftCreateInput{
+		From:    "sender@example.com",
+		To:      "alice@example.com",
+		Subject: "no separately",
+		Body:    `<p>Hello</p>`,
+	}
+
+	rawEML, err := buildRawEMLForDraftCreate(context.Background(), newRuntimeWithFrom("sender@example.com"), input, nil, "", nil, "", "", nil, nil)
+	if err != nil {
+		t.Fatalf("buildRawEMLForDraftCreate() error = %v", err)
+	}
+	eml := decodeBase64URL(rawEML)
+	if strings.Contains(eml, "X-Lms-Send-Separately") {
+		t.Errorf("expected no X-Lms-Send-Separately header when SendSeparately is false, got:\n%s", eml)
+	}
+}
+
+// TestMailDraftCreate_SendSeparatelyDryRunPreview verifies that
+// `--send-separately` is surfaced in the dry-run _preview payload, so
+// callers / AI agents can confirm the flag took effect without sending.
+func TestMailDraftCreate_SendSeparatelyDryRunPreview(t *testing.T) {
+	f, stdout, _, _ := mailShortcutTestFactory(t)
+
+	err := runMountedMailShortcut(t, MailDraftCreate, []string{
+		"+draft-create",
+		"--to", "alice@example.com,bob@example.com",
+		"--subject", "preview",
+		"--body", "<p>hello</p>",
+		"--send-separately",
+		"--dry-run",
+	}, f, stdout)
+	if err != nil {
+		t.Fatalf("dry-run failed: %v", err)
+	}
+	out := stdout.String()
+	if !strings.Contains(out, `"send_separately"`) {
+		t.Fatalf("expected dry-run preview to surface send_separately, got: %s", out)
+	}
+	if !strings.Contains(out, "true") {
+		t.Fatalf("expected dry-run preview send_separately=true, got: %s", out)
+	}
+}
+
+// TestMailDraftCreate_SendSeparatelySingleRecipientWarn verifies that a
+// single effective recipient triggers a stderr warning but does NOT
+// reject the request.
+func TestMailDraftCreate_SendSeparatelySingleRecipientWarn(t *testing.T) {
+	f, stdout, stderr, reg := mailShortcutTestFactory(t)
+
+	reg.Register(&httpmock.Stub{
+		Method: "GET",
+		URL:    "/user_mailboxes/me/profile",
+		Body: map[string]interface{}{
+			"code": 0,
+			"data": map[string]interface{}{"primary_email_address": "me@example.com"},
+		},
+	})
+	reg.Register(&httpmock.Stub{
+		Method: "POST",
+		URL:    "/user_mailboxes/me/drafts",
+		Body: map[string]interface{}{
+			"code": 0,
+			"data": map[string]interface{}{"draft_id": "draft_ss_001"},
+		},
+	})
+
+	err := runMountedMailShortcut(t, MailDraftCreate, []string{
+		"+draft-create",
+		"--to", "alice@example.com",
+		"--subject", "single",
+		"--body", "<p>hi</p>",
+		"--send-separately",
+	}, f, stdout)
+	if err != nil {
+		t.Fatalf("expected draft to succeed with single recipient + send-separately, got error: %v", err)
+	}
+	if !strings.Contains(stderr.String(), "--send-separately has no observable effect with only 1 recipient") {
+		t.Errorf("expected single-recipient warning on stderr, got: %s", stderr.String())
+	}
+}
+
+// TestMailDraftCreate_SendSeparatelyMultiRecipientNoWarn verifies that
+// multiple recipients do not trip the warning.
+func TestMailDraftCreate_SendSeparatelyMultiRecipientNoWarn(t *testing.T) {
+	f, stdout, stderr, reg := mailShortcutTestFactory(t)
+
+	reg.Register(&httpmock.Stub{
+		Method: "GET",
+		URL:    "/user_mailboxes/me/profile",
+		Body: map[string]interface{}{
+			"code": 0,
+			"data": map[string]interface{}{"primary_email_address": "me@example.com"},
+		},
+	})
+	reg.Register(&httpmock.Stub{
+		Method: "POST",
+		URL:    "/user_mailboxes/me/drafts",
+		Body: map[string]interface{}{
+			"code": 0,
+			"data": map[string]interface{}{"draft_id": "draft_ss_002"},
+		},
+	})
+
+	err := runMountedMailShortcut(t, MailDraftCreate, []string{
+		"+draft-create",
+		"--to", "alice@example.com,bob@example.com",
+		"--subject", "multi",
+		"--body", "<p>hi</p>",
+		"--send-separately",
+	}, f, stdout)
+	if err != nil {
+		t.Fatalf("expected draft to succeed: %v", err)
+	}
+	if strings.Contains(stderr.String(), "single recipient") || strings.Contains(stderr.String(), "no observable effect") {
+		t.Errorf("did not expect single-recipient warning with 2 recipients, got: %s", stderr.String())
+	}
+}

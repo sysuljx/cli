@@ -101,6 +101,19 @@ func applyOp(dctx *DraftCtx, snapshot *DraftSnapshot, op PatchOp, options PatchO
 			return err
 		}
 		removeHeader(&snapshot.Headers, op.Name)
+	case "set_send_separately":
+		// Translate the typed op into a header upsert/remove on the
+		// X-Lms-Send-Separately header — the same surface as +draft-create
+		// / +send --send-separately. "true" / "1" enables; "false" / "0"
+		// (or anything else with op.Value rejected by Validate) removes.
+		switch strings.ToLower(strings.TrimSpace(op.Value)) {
+		case "true", "1":
+			upsertHeader(&snapshot.Headers, "X-Lms-Send-Separately", "1")
+		case "false", "0":
+			removeHeader(&snapshot.Headers, "X-Lms-Send-Separately")
+		default:
+			return fmt.Errorf(`set_send_separately: value must be "true", "false", "1", or "0"`)
+		}
 	case "add_attachment":
 		return addAttachment(dctx, snapshot, op.Path)
 	case "remove_attachment":

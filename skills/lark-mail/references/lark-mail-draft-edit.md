@@ -177,6 +177,17 @@ lark-cli mail +draft-edit --draft-id <draft-id> --set-subject '测试' --dry-run
 { "op": "remove_header", "name": "X-Custom" }
 ```
 
+`set_send_separately`
+
+```json
+{ "op": "set_send_separately", "value": "true" }
+{ "op": "set_send_separately", "value": "false" }
+```
+
+将草稿标记为「分别发送」：发送时每个 To/Cc 收件人只看见自己（其他 To/Cc 在该副本里被剥离），看不到彼此存在。底层等价于 `set_header` / `remove_header` 操作 `X-Lms-Send-Separately`，但语义更明确，避免书写错头名 / 错值；`value` 只支持 `"true"` / `"false"` / `"1"` / `"0"`（其它值会被 `Validate` 拒绝）。`"true"`/`"1"` 写入 `X-Lms-Send-Separately: 1` 头；`"false"`/`"0"` 删除该头。
+
+「分别发送 vs BCC」：`set_send_separately` 让每个 To/Cc 收件人都看不到其他 To/Cc，相当于按 To/Cc 列表逐人拆发；`Bcc` 仅把 Bcc 收件人对所有人隐藏，但 To/Cc 之间仍互相可见。两者可叠加。
+
 ### 附件与内嵌图片
 
 **如何获取定位字段：** 不同类型附件有不同的定位字段，都从 `--inspect` 获取：

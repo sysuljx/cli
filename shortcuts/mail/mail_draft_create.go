@@ -19,15 +19,16 @@ import (
 // struct so parseDraftCreateInput / buildRawEMLForDraftCreate have a
 // uniform value type to pass around.
 type draftCreateInput struct {
-	To        string
-	Subject   string
-	Body      string
-	From      string
-	CC        string
-	BCC       string
-	Attach    string
-	Inline    string
-	PlainText bool
+	To             string
+	Subject        string
+	Body           string
+	From           string
+	CC             string
+	BCC            string
+	Attach         string
+	Inline         string
+	PlainText      bool
+	SendSeparately bool
 }
 
 // MailDraftCreate is the `+draft-create` shortcut: create a brand-new mail
@@ -54,6 +55,7 @@ var MailDraftCreate = common.Shortcut{
 		{Name: "inline", Desc: "Optional. Inline images as a JSON array. Each entry: {\"cid\":\"<unique-id>\",\"file_path\":\"<relative-path>\"}. All file_path values must be relative paths. Cannot be used with --plain-text. CID images are embedded via <img src=\"cid:...\"> in the HTML body. CID is a unique identifier, e.g. a random hex string like \"a1b2c3d4e5f6a7b8c9d0\"."},
 		{Name: "request-receipt", Type: "bool", Desc: "Request a read receipt (Message Disposition Notification, RFC 3798) addressed to the sender. Recipient mail clients may prompt the user, send automatically, or silently ignore — delivery of a receipt is not guaranteed."},
 		{Name: "template-id", Desc: "Optional. Apply a saved template by ID (decimal integer string) before composing. The template's subject/body/to/cc/bcc/attachments are merged with user-supplied flags (user flags win). Requires --as user."},
+		{Name: "send-separately", Type: "bool", Desc: "Mark the draft as 'send separately': at send time each recipient (To/Cc) only sees themselves in the To/Cc header; other recipients are not exposed. Stacks with --cc/--bcc/--attach/--inline/--plain-text/--template-id/--request-receipt/--signature-id/--priority. Differs from Bcc: Bcc hides recipients from everyone, while --send-separately makes every recipient appear to be the sole To/Cc addressee. Has no observable effect when there is only one recipient in total."},
 		signatureFlag,
 		priorityFlag,
 		eventSummaryFlag, eventStartFlag, eventEndFlag, eventLocationFlag,
@@ -71,8 +73,9 @@ var MailDraftCreate = common.Shortcut{
 			Body(map[string]interface{}{
 				"raw": "<base64url-EML>",
 				"_preview": map[string]interface{}{
-					"to":      runtime.Str("to"),
-					"subject": runtime.Str("subject"),
+					"to":              runtime.Str("to"),
+					"subject":         runtime.Str("subject"),
+					"send_separately": runtime.Bool("send-separately"),
 				},
 			})
 		return api
@@ -106,15 +109,16 @@ var MailDraftCreate = common.Shortcut{
 		}
 		mailboxID := resolveComposeMailboxID(runtime)
 		input := draftCreateInput{
-			To:        runtime.Str("to"),
-			Subject:   runtime.Str("subject"),
-			Body:      runtime.Str("body"),
-			From:      runtime.Str("from"),
-			CC:        runtime.Str("cc"),
-			BCC:       runtime.Str("bcc"),
-			Attach:    runtime.Str("attach"),
-			Inline:    runtime.Str("inline"),
-			PlainText: runtime.Bool("plain-text"),
+			To:             runtime.Str("to"),
+			Subject:        runtime.Str("subject"),
+			Body:           runtime.Str("body"),
+			From:           runtime.Str("from"),
+			CC:             runtime.Str("cc"),
+			BCC:            runtime.Str("bcc"),
+			Attach:         runtime.Str("attach"),
+			Inline:         runtime.Str("inline"),
+			PlainText:      runtime.Bool("plain-text"),
+			SendSeparately: runtime.Bool("send-separately"),
 		}
 		var templateLargeAttachmentIDs []string
 		var templateInlineAttachments []templateInlineRef
@@ -163,6 +167,18 @@ var MailDraftCreate = common.Shortcut{
 		if strings.TrimSpace(input.Body) == "" {
 			return output.ErrValidation("effective body is empty after applying template; pass --body explicitly")
 		}
+		// Post-template-merge: warn (but do not reject) when --send-separately
+		// is set with exactly one effective recipient; a single recipient
+		// derives no benefit from per-recipient envelope splitting. Zero
+		// recipients is intentionally allowed for +draft-create (recipients
+		// can still be added later via +draft-edit). The user can also add
+		// more recipients later, so do not error out.
+		if input.SendSeparately {
+			total := countAddresses(input.To) + countAddresses(input.CC) + countAddresses(input.BCC)
+			if total == 1 {
+				fmt.Fprintf(runtime.IO().ErrOut, "warning: --send-separately has no observable effect with only 1 recipient; add more via --cc/--bcc or +draft-edit\n")
+			}
+		}
 		sigResult, err := resolveSignature(ctx, runtime, mailboxID, runtime.Str("signature-id"), runtime.Str("from"))
 		if err != nil {
 			return err
@@ -174,6 +190,11 @@ var MailDraftCreate = common.Shortcut{
 		}
 		draftResult, err := draftpkg.CreateWithRaw(runtime, mailboxID, rawEML)
 		if err != nil {
+			if input.SendSeparately && isMailErrno6002(err) {
+				return output.ErrWithHint(output.ExitAPI, "api_error",
+					fmt.Sprintf("create draft failed: %v", err),
+					"--send-separately requires the backend to support the X-Lms-Send-Separately header; verify open-access / data-access version is up to date")
+			}
 			return fmt.Errorf("create draft failed: %w", err)
 		}
 		out := map[string]interface{}{"draft_id": draftResult.DraftID}
@@ -304,6 +325,9 @@ func buildRawEMLForDraftCreate(
 		return "", err
 	}
 	bld = applyPriority(bld, priority)
+	if input.SendSeparately {
+		bld = bld.Header(sendSeparatelyEmlHeader, "1")
+	}
 	if calData := buildCalendarBody(runtime, senderEmail, input.To, input.CC); calData != nil {
 		bld = bld.CalendarBody(calData)
 	}

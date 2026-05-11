@@ -2084,6 +2084,30 @@ func applyPriority(bld emlbuilder.Builder, priority string) emlbuilder.Builder {
 	return bld.Header("X-Cli-Priority", priority)
 }
 
+// sendSeparatelyEmlHeader is the EML header injected when a compose
+// shortcut is invoked with --send-separately. Backend data-access parses
+// this header in headersToPbBodyExtra and translates it into the
+// BodyExtra.IsSendSeparately field; smtp-out-mail-out then splits the
+// envelope into per-recipient copies at delivery time so each recipient
+// only sees themselves in the To/Cc header. Bcc visibility is
+// unaffected.
+const sendSeparatelyEmlHeader = "X-Lms-Send-Separately"
+
+// isMailErrno6002 reports whether err carries the Lark mail backend's
+// "invalid draft message format" errno (6002). The OAPI gateway surfaces
+// the errno in the error message; we string-match it here because
+// CallAPI returns a wrapped error rather than a typed APIError. Used by
+// compose shortcuts to attach a hint when --send-separately is set but
+// the backend rejects the header — that combination is the classic
+// "backend not yet updated" failure mode for this feature.
+func isMailErrno6002(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "6002")
+}
+
 // parseNetAddrs converts a comma-separated address string to []net/mail.Address.
 // It reuses ParseMailboxList for display-name-aware parsing and deduplicates
 // by email address (case-insensitive), preserving the first occurrence.

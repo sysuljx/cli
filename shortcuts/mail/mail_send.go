@@ -38,6 +38,7 @@ var MailSend = common.Shortcut{
 		{Name: "send-time", Desc: "Scheduled send time as a Unix timestamp in seconds. Must be at least 5 minutes in the future. Use with --confirm-send to schedule the email."},
 		{Name: "request-receipt", Type: "bool", Desc: "Request a read receipt (Message Disposition Notification, RFC 3798) addressed to the sender. Recipient mail clients may prompt the user, send automatically, or silently ignore — delivery of a receipt is not guaranteed."},
 		{Name: "template-id", Desc: "Optional. Apply a saved template by ID (decimal integer string) before composing. The template's subject/body/to/cc/bcc/attachments are merged with user-supplied flags (user flags win). Requires --as user."},
+		{Name: "send-separately", Type: "bool", Desc: "Mark the draft as 'send separately': at send time each recipient (To/Cc) only sees themselves in the To/Cc header; other recipients are not exposed. Stacks with --cc/--bcc/--attach/--inline/--plain-text/--template-id/--request-receipt/--signature-id/--priority/--confirm-send. Differs from Bcc: Bcc hides recipients from everyone, while --send-separately makes every recipient appear to be the sole To/Cc addressee. Has no observable effect when there is only one recipient in total."},
 		signatureFlag,
 		priorityFlag,
 		eventSummaryFlag, eventStartFlag, eventEndFlag, eventLocationFlag},
@@ -60,8 +61,9 @@ var MailSend = common.Shortcut{
 			Body(map[string]interface{}{
 				"raw": "<base64url-EML>",
 				"_preview": map[string]interface{}{
-					"to":      to,
-					"subject": subject,
+					"to":              to,
+					"subject":         subject,
+					"send_separately": runtime.Bool("send-separately"),
 				},
 			})
 		if confirmSend {
@@ -116,6 +118,7 @@ var MailSend = common.Shortcut{
 		inlineFlag := runtime.Str("inline")
 		confirmSend := runtime.Bool("confirm-send")
 		sendTime := runtime.Str("send-time")
+		sendSeparately := runtime.Bool("send-separately")
 
 		senderEmail := resolveComposeSenderEmail(runtime)
 		signatureID := runtime.Str("signature-id")
@@ -173,6 +176,18 @@ var MailSend = common.Shortcut{
 			// addresses are folded in.
 			if err := validateComposeHasAtLeastOneRecipient(to, ccFlag, bccFlag); err != nil {
 				return err
+			}
+		}
+
+		// Post-merge single-recipient warn for --send-separately: at this
+		// point To/Cc/Bcc reflect both user input and any template-supplied
+		// addresses. Warn only — do not reject — so a user who plans to
+		// add more recipients via +draft-edit before sending can still
+		// stage the draft.
+		if sendSeparately {
+			total := countAddresses(to) + countAddresses(ccFlag) + countAddresses(bccFlag)
+			if total == 1 {
+				fmt.Fprintf(runtime.IO().ErrOut, "warning: --send-separately has no observable effect with only 1 recipient; add more via --cc/--bcc or +draft-edit\n")
 			}
 		}
 
@@ -256,6 +271,9 @@ var MailSend = common.Shortcut{
 			return err
 		}
 		bld = applyPriority(bld, priority)
+		if sendSeparately {
+			bld = bld.Header(sendSeparatelyEmlHeader, "1")
+		}
 		if calData := buildCalendarBody(runtime, senderEmail, to, ccFlag); calData != nil {
 			bld = bld.CalendarBody(calData)
 		}
@@ -281,6 +299,11 @@ var MailSend = common.Shortcut{
 
 		draftResult, err := draftpkg.CreateWithRaw(runtime, mailboxID, rawEML)
 		if err != nil {
+			if sendSeparately && isMailErrno6002(err) {
+				return output.ErrWithHint(output.ExitAPI, "api_error",
+					fmt.Sprintf("failed to create draft: %v", err),
+					"--send-separately requires the backend to support the X-Lms-Send-Separately header; verify open-access / data-access version is up to date")
+			}
 			return fmt.Errorf("failed to create draft: %w", err)
 		}
 		if !confirmSend {

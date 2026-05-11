@@ -309,6 +309,13 @@ func (op PatchOp) Validate() error {
 		if strings.TrimSpace(op.Name) == "" {
 			return fmt.Errorf("remove_header requires name")
 		}
+	case "set_send_separately":
+		switch strings.ToLower(strings.TrimSpace(op.Value)) {
+		case "true", "false", "1", "0":
+			// ok
+		default:
+			return fmt.Errorf(`set_send_separately: value must be "true", "false", "1", or "0"`)
+		}
 	case "add_attachment":
 		if strings.TrimSpace(op.Path) == "" {
 			return fmt.Errorf("add_attachment requires path")
