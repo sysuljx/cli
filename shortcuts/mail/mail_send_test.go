@@ -135,7 +135,8 @@ func TestMailSend_SendSeparatelyDryRunPreview(t *testing.T) {
 	if !strings.Contains(out, `"send_separately"`) {
 		t.Fatalf("expected dry-run preview to surface send_separately, got: %s", out)
 	}
-	if !strings.Contains(out, "true") {
+	if !strings.Contains(out, `"send_separately":true`) &&
+		!strings.Contains(out, `"send_separately": true`) {
 		t.Fatalf("expected dry-run preview send_separately=true, got: %s", out)
 	}
 }

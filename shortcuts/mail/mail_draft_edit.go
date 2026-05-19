@@ -476,7 +476,7 @@ func buildDraftEditPatchTemplate() map[string]interface{} {
 			{"op": "set_reply_body", "shape": map[string]interface{}{"value": "string (user-authored content only, WITHOUT the quote block; quote block, signature, and attachment cards are auto-preserved; supports <img src=\"./local/path.png\" /> — local paths auto-resolved to inline MIME parts)"}},
 			{"op": "set_header", "shape": map[string]interface{}{"name": "string", "value": "string"}},
 			{"op": "remove_header", "shape": map[string]interface{}{"name": "string"}},
-			{"op": "set_send_separately", "shape": map[string]interface{}{"value": "\"true\"|\"false\"|\"1\"|\"0\""}, "note": "marks draft as send-separately; on send, each To/Cc recipient sees only themselves. Stores as EML header X-Lms-Send-Separately: 1; \"false\"/\"0\" removes the header. Differs from Bcc: Bcc hides recipients from everyone, while send-separately makes every recipient appear sole."},
+			{"op": "set_send_separately", "shape": map[string]interface{}{"value": "\"true\"|\"false\"|\"1\"|\"0\" (true/false are case-insensitive)"}, "note": "marks draft as send-separately; on send, each To/Cc recipient sees only themselves. Accepts any-case true/1 / false/0 (surrounding whitespace trimmed). Stores as EML header X-Lms-Send-Separately: 1; \"false\"/\"0\" removes the header. Differs from Bcc: Bcc hides recipients from everyone, while send-separately makes every recipient appear sole."},
 			{"op": "add_attachment", "shape": map[string]interface{}{"path": "string(relative path)"}},
 			{"op": "remove_attachment", "shape": map[string]interface{}{"target": map[string]interface{}{"part_id": "string(optional, for normal attachment)", "cid": "string(optional, for normal attachment)", "token": "string(optional, for large attachment; from large_attachments_summary in --inspect)"}}},
 			{"op": "add_inline", "shape": map[string]interface{}{"path": "string(relative path)", "cid": "string", "filename": "string(optional)", "content_type": "string(optional)"}, "note": "advanced: prefer <img src=\"./path\"> in set_body/set_reply_body instead"},
@@ -507,7 +507,7 @@ func buildDraftEditPatchTemplate() map[string]interface{} {
 				"ops": []map[string]interface{}{
 					{"op": "set_header", "shape": map[string]interface{}{"name": "string", "value": "string"}},
 					{"op": "remove_header", "shape": map[string]interface{}{"name": "string"}},
-					{"op": "set_send_separately", "shape": map[string]interface{}{"value": "\"true\"|\"false\"|\"1\"|\"0\""}, "note": "marks draft as send-separately via X-Lms-Send-Separately header; \"false\"/\"0\" removes it"},
+					{"op": "set_send_separately", "shape": map[string]interface{}{"value": "\"true\"|\"false\"|\"1\"|\"0\" (true/false are case-insensitive)"}, "note": "marks draft as send-separately via X-Lms-Send-Separately header; any-case \"true\"/\"1\" sets it, any-case \"false\"/\"0\" removes it"},
 				},
 			},
 			{

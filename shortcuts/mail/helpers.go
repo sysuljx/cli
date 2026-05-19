@@ -2091,19 +2091,23 @@ func applyPriority(bld emlbuilder.Builder, priority string) emlbuilder.Builder {
 // Bcc visibility is unaffected.
 const sendSeparatelyEmlHeader = "X-Lms-Send-Separately"
 
+// mailErrno6002Re matches the standalone token "6002" — bounded by start,
+// end, or any non-digit. Prevents false-positive matches against unrelated
+// numbers such as "16002".
+var mailErrno6002Re = regexp.MustCompile(`(?:^|[^0-9])6002(?:[^0-9]|$)`)
+
 // isMailErrno6002 reports whether err carries the Lark mail backend's
 // "invalid draft message format" errno (6002). The OAPI gateway surfaces
-// the errno in the error message; we string-match it here because
-// CallAPI returns a wrapped error rather than a typed APIError. Used by
-// compose shortcuts to attach a hint when --send-separately is set but
-// the backend rejects the header — that combination is the classic
+// the errno in the error message; we match it via regex because CallAPI
+// returns a wrapped error rather than a typed APIError. Used by compose
+// shortcuts to attach a hint when --send-separately is set but the
+// backend rejects the header — that combination is the classic
 // "backend not yet updated" failure mode for this feature.
 func isMailErrno6002(err error) bool {
 	if err == nil {
 		return false
 	}
-	msg := err.Error()
-	return strings.Contains(msg, "6002")
+	return mailErrno6002Re.MatchString(err.Error())
 }
 
 // parseNetAddrs converts a comma-separated address string to []net/mail.Address.

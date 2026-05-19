@@ -174,8 +174,11 @@ var MailDraftCreate = common.Shortcut{
 		// can still be added later via +draft-edit). The user can also add
 		// more recipients later, so do not error out.
 		if input.SendSeparately {
-			total := countAddresses(input.To) + countAddresses(input.CC) + countAddresses(input.BCC)
-			if total == 1 {
+			// --send-separately only changes what To/Cc recipients see;
+			// Bcc visibility is unaffected, so counting Bcc here would
+			// suppress the warning even when To/Cc has no practical split.
+			visibleRecipients := countAddresses(input.To) + countAddresses(input.CC)
+			if visibleRecipients <= 1 {
 				fmt.Fprintf(runtime.IO().ErrOut, "warning: --send-separately has no observable effect with only 1 recipient; add more via --cc/--bcc or +draft-edit\n")
 			}
 		}
