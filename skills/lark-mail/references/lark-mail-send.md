@@ -10,6 +10,8 @@
 
 本 skill 对应 shortcut：`lark-cli mail +send`。
 
+未显式传 `--signature-id` 且未传 `--no-signature` 时，如当前发件地址配置了默认发信签名，命令会自动追加该签名。
+
 ## CRITICAL — 发送工作流（必须遵循）
 
 **CRITICAL - 编辑邮件内容前 MUST 先用 Read 工具读取 [references/lark-mail-html.md](references/lark-mail-html.md)，其中包含邮件书写规范**
@@ -78,7 +80,8 @@ lark-cli mail +send --to alice@example.com --subject '测试' --body '<p>test</p
 | `--plain-text` | 否 | 强制纯文本模式，忽略 HTML 自动检测。不可与 `--inline` 同时使用 |
 | `--attach <paths>` | 否 | 附件文件路径，多个用逗号分隔。相对路径。当附件导致 EML 总大小超过 25 MB 时，超出部分自动上传为超大附件（HTML 邮件插入下载卡片，纯文本邮件追加下载链接），单个文件上限 3 GB |
 | `--inline <json>` | 否 | 高级用法：手动指定内嵌图片 CID 映射。推荐直接在 `--body` 中使用 `<img src="./path" />`（自动解析）。仅在需要精确控制 CID 命名时使用此参数。格式：`'[{"cid":"mycid","file_path":"./logo.png"}]'`，在 body 中用 `<img src="cid:mycid">` 引用。不可与 `--plain-text` 同时使用 |
-| `--signature-id <id>` | 否 | 签名 ID。附加邮箱签名到正文末尾。运行 `mail +signature` 查看可用签名。不可与 `--plain-text` 同时使用 |
+| `--signature-id <id>` | 否 | 签名 ID。显式附加指定邮箱签名到正文末尾，并覆盖账号默认发信签名。运行 `mail +signature` 查看可用签名。HTML 邮件追加 HTML 签名；纯文本邮件会把签名降级为纯文本追加 |
+| `--no-signature` | 否 | 跳过所有签名，包括账号默认发信签名。不可与 `--signature-id` 同时使用 |
 | `--priority <level>` | 否 | 邮件优先级：`high`、`normal`、`low`。省略或 `normal` 时不设置优先级 |
 | `--event-summary <text>` | 否 | 日程标题。设置此参数即在邮件中嵌入日程邀请（text/calendar）。需同时设置 `--event-start` 和 `--event-end` |
 | `--event-start <time>` | 条件必填 | 日程开始时间（ISO 8601，如 `2026-04-20T14:00+08:00`） |

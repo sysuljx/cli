@@ -45,6 +45,7 @@ var MailForward = common.Shortcut{
 		{Name: "subject", Desc: "Optional. Override the auto-generated Fw: subject. When set, the shortcut uses this value verbatim instead of prefixing the original subject."},
 		{Name: "template-id", Desc: "Optional. Apply a saved template by ID (decimal integer string) before composing. The template's body/to/cc/bcc/attachments are merged into the forward draft (template values appended to user flags / forward-derived values; no de-duplication)."},
 		signatureFlag,
+		noSignatureFlag,
 		priorityFlag,
 		eventSummaryFlag, eventStartFlag, eventEndFlag, eventLocationFlag,
 		showLintDetailsFlag},
@@ -96,7 +97,7 @@ var MailForward = common.Shortcut{
 				return err
 			}
 		}
-		if err := validateSignatureWithPlainText(runtime.Bool("plain-text"), runtime.Str("signature-id")); err != nil {
+		if err := validateSignatureFlags(runtime.Bool("no-signature"), runtime.Str("signature-id")); err != nil {
 			return err
 		}
 		if err := validateEventFlags(runtime); err != nil {
@@ -127,12 +128,7 @@ var MailForward = common.Shortcut{
 			return err
 		}
 
-		signatureID := runtime.Str("signature-id")
 		mailboxID := resolveComposeMailboxID(runtime)
-		sigResult, sigErr := resolveSignature(ctx, runtime, mailboxID, signatureID, runtime.Str("from"))
-		if sigErr != nil {
-			return sigErr
-		}
 		sourceMsg, err := fetchComposeSourceMessage(runtime, mailboxID, messageId)
 		if err != nil {
 			return mailDecorateProblemMessage(err, "failed to fetch original message")
@@ -154,6 +150,10 @@ var MailForward = common.Shortcut{
 		senderEmail := resolvedSender
 		if senderEmail == "" {
 			senderEmail = orig.headTo
+		}
+		sigResult, sigErr := resolveComposeSignature(ctx, runtime, mailboxID, senderEmail, sigKindSend)
+		if sigErr != nil {
+			return sigErr
 		}
 
 		// --template-id merge (§5.5 Q1-Q5).
@@ -310,7 +310,7 @@ var MailForward = common.Shortcut{
 				return err
 			}
 		} else {
-			composedTextBody = buildForwardedMessage(&orig, body)
+			composedTextBody = buildForwardedMessage(&orig, appendPlainTextSignature(body, sigResult))
 			bld = bld.TextBody([]byte(composedTextBody))
 		}
 		// Embed template SMALL non-inline attachments regardless of body mode.

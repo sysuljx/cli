@@ -5,10 +5,13 @@ package mail
 
 import (
 	"context"
+	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -25,11 +28,67 @@ var signatureFlag = common.Flag{
 	Desc: "Optional. Signature ID to append after body content. Run `mail +signature` to list available signatures.",
 }
 
+// noSignatureFlag is the common flag definition for --no-signature, shared by all compose shortcuts.
+var noSignatureFlag = common.Flag{
+	Name: "no-signature",
+	Type: "bool",
+	Desc: "Do not append any signature, including the account's default signature.",
+}
+
+type signatureKind int
+
+const (
+	sigKindSend signatureKind = iota
+	sigKindReply
+)
+
 // signatureResult holds the pre-processed signature data ready for HTML injection.
 type signatureResult struct {
 	ID              string
 	RenderedContent string
 	Images          []draftpkg.SignatureImage
+}
+
+// resolveDefaultSignatureID returns the sender address default signature ID.
+// Automatic default lookup is best-effort: failures degrade to no signature.
+func resolveDefaultSignatureID(runtime *common.RuntimeContext, mailboxID, senderEmail string, kind signatureKind) string {
+	resp, err := signature.ListAll(runtime, mailboxID)
+	if err != nil {
+		fmt.Fprintf(runtime.IO().ErrOut, "warning: failed to resolve default mail signature: %v\n", err)
+		return ""
+	}
+	return defaultSignatureIDFromResponse(resp, senderEmail, kind)
+}
+
+func defaultSignatureIDFromResponse(resp *signature.GetSignaturesResponse, senderEmail string, kind signatureKind) string {
+	if resp == nil {
+		return ""
+	}
+	pick := func(u signature.SignatureUsage) string {
+		if kind == sigKindReply {
+			return u.ReplySignatureID
+		}
+		return u.SendMailSignatureID
+	}
+	if senderEmail != "" {
+		for _, u := range resp.Usages {
+			if strings.EqualFold(u.EmailAddress, senderEmail) {
+				return normalizeSigID(pick(u))
+			}
+		}
+	}
+	if len(resp.Usages) > 0 {
+		return normalizeSigID(pick(resp.Usages[0]))
+	}
+	return ""
+}
+
+func normalizeSigID(id string) string {
+	id = strings.TrimSpace(id)
+	if id == "" || id == "0" {
+		return ""
+	}
+	return id
 }
 
 // resolveSignature fetches, interpolates, and downloads images for a signature.
@@ -244,13 +303,66 @@ func signatureCIDs(sig *signatureResult) []string {
 	return cids
 }
 
-// validateSignatureWithPlainText returns an error if both --plain-text and --signature-id are set.
-func validateSignatureWithPlainText(plainText bool, signatureID string) error {
-	if plainText && signatureID != "" {
-		return mailValidationError("--plain-text and --signature-id are mutually exclusive: signatures require HTML mode").
+var (
+	plainTextBlockBoundaryRE = regexp.MustCompile(`(?i)</?(br|div|p|tr)\b[^>]*>`)
+	plainTextImgRE           = regexp.MustCompile(`(?is)<img\b[^>]*>`)
+	plainTextTagRE           = regexp.MustCompile(`(?is)<[^>]+>`)
+	plainTextBlankLinesRE    = regexp.MustCompile(`\n{3,}`)
+)
+
+func signatureToPlainText(renderedHTML string) string {
+	text := plainTextImgRE.ReplaceAllString(renderedHTML, "")
+	text = plainTextBlockBoundaryRE.ReplaceAllString(text, "\n")
+	text = plainTextTagRE.ReplaceAllString(text, "")
+	text = html.UnescapeString(text)
+	text = strings.ReplaceAll(text, "\u00a0", " ")
+	lines := strings.Split(text, "\n")
+	for i := range lines {
+		lines[i] = strings.TrimSpace(lines[i])
+	}
+	text = strings.Join(lines, "\n")
+	text = plainTextBlankLinesRE.ReplaceAllString(text, "\n\n")
+	return strings.TrimSpace(text)
+}
+
+func appendPlainTextSignature(textBody string, sig *signatureResult) string {
+	if sig == nil {
+		return textBody
+	}
+	txt := signatureToPlainText(sig.RenderedContent)
+	if strings.TrimSpace(txt) == "" {
+		return textBody
+	}
+	return strings.TrimRight(textBody, "\n") + "\n\n" + txt
+}
+
+func resolveComposeSignatureID(runtime *common.RuntimeContext, mailboxID, senderEmail string, kind signatureKind) (string, bool) {
+	if runtime.Bool("no-signature") {
+		return "", false
+	}
+	signatureID := runtime.Str("signature-id")
+	if signatureID != "" {
+		return signatureID, false
+	}
+	return resolveDefaultSignatureID(runtime, mailboxID, senderEmail, kind), true
+}
+
+func resolveComposeSignature(ctx context.Context, runtime *common.RuntimeContext, mailboxID, senderEmail string, kind signatureKind) (*signatureResult, error) {
+	signatureID, autoSignature := resolveComposeSignatureID(runtime, mailboxID, senderEmail, kind)
+	sigResult, err := resolveSignature(ctx, runtime, mailboxID, signatureID, senderEmail)
+	if err != nil && autoSignature {
+		fmt.Fprintf(runtime.IO().ErrOut, "warning: failed to append default mail signature: %v\n", err)
+		return nil, nil
+	}
+	return sigResult, err
+}
+
+func validateSignatureFlags(noSig bool, signatureID string) error {
+	if noSig && signatureID != "" {
+		return mailValidationError("--no-signature and --signature-id are mutually exclusive").
 			WithParams(
-				mailInvalidParam("--plain-text", "mutually exclusive with --signature-id"),
-				mailInvalidParam("--signature-id", "requires HTML mode"),
+				mailInvalidParam("--no-signature", "mutually exclusive with --signature-id"),
+				mailInvalidParam("--signature-id", "mutually exclusive with --no-signature"),
 			)
 	}
 	return nil

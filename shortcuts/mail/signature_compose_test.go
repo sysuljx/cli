@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/larksuite/cli/errs"
+	"github.com/larksuite/cli/shortcuts/mail/signature"
 )
 
 func TestDownloadSignatureImageRejectsInvalidURLs(t *testing.T) {
@@ -174,8 +175,43 @@ func TestDownloadSignatureImageSuccessUsesFilenameContentType(t *testing.T) {
 	}
 }
 
-func TestValidateSignatureWithPlainTextTypedError(t *testing.T) {
-	err := validateSignatureWithPlainText(true, "sig_123")
+func TestSignatureToPlainText(t *testing.T) {
+	got := signatureToPlainText(`<div>Best&nbsp;regards,<br>Alice<img src="cid:x"></div><p>Mail &amp; Team</p>`)
+	want := "Best regards,\nAlice\n\nMail & Team"
+	if got != want {
+		t.Fatalf("signatureToPlainText() = %q, want %q", got, want)
+	}
+}
+
+func TestAppendPlainTextSignature(t *testing.T) {
+	got := appendPlainTextSignature("body\n\n", &signatureResult{RenderedContent: "<div>--<br>Alice</div>"})
+	want := "body\n\n--\nAlice"
+	if got != want {
+		t.Fatalf("appendPlainTextSignature() = %q, want %q", got, want)
+	}
+}
+
+func TestResolveDefaultSignatureIDMatchesSenderAndFallback(t *testing.T) {
+	resp := &signature.GetSignaturesResponse{
+		Usages: []signature.SignatureUsage{
+			{EmailAddress: "primary@example.com", SendMailSignatureID: "sig_primary", ReplySignatureID: "sig_reply_primary"},
+			{EmailAddress: "Alias@Example.com", SendMailSignatureID: "sig_alias", ReplySignatureID: "sig_reply_alias"},
+		},
+	}
+	if got := defaultSignatureIDFromResponse(resp, "alias@example.com", sigKindSend); got != "sig_alias" {
+		t.Fatalf("alias send default = %q, want sig_alias", got)
+	}
+	if got := defaultSignatureIDFromResponse(resp, "missing@example.com", sigKindReply); got != "sig_reply_primary" {
+		t.Fatalf("fallback reply default = %q, want sig_reply_primary", got)
+	}
+	resp.Usages[0].SendMailSignatureID = "0"
+	if got := defaultSignatureIDFromResponse(resp, "", sigKindSend); got != "" {
+		t.Fatalf("zero default = %q, want empty", got)
+	}
+}
+
+func TestValidateSignatureFlagsTypedError(t *testing.T) {
+	err := validateSignatureFlags(true, "sig_123")
 	var validationErr *errs.ValidationError
 	if !errors.As(err, &validationErr) {
 		t.Fatalf("expected validation error, got %T (%v)", err, err)
@@ -183,7 +219,7 @@ func TestValidateSignatureWithPlainTextTypedError(t *testing.T) {
 	if len(validationErr.Params) != 2 {
 		t.Fatalf("params = %#v, want two conflicting params", validationErr.Params)
 	}
-	if validationErr.Params[0].Name != "--plain-text" || validationErr.Params[1].Name != "--signature-id" {
+	if validationErr.Params[0].Name != "--no-signature" || validationErr.Params[1].Name != "--signature-id" {
 		t.Fatalf("unexpected params: %#v", validationErr.Params)
 	}
 }

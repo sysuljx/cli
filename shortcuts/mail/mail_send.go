@@ -40,6 +40,7 @@ var MailSend = common.Shortcut{
 		{Name: "request-receipt", Type: "bool", Desc: "Request a read receipt (Message Disposition Notification, RFC 3798) addressed to the sender. Recipient mail clients may prompt the user, send automatically, or silently ignore — delivery of a receipt is not guaranteed."},
 		{Name: "template-id", Desc: "Optional. Apply a saved template by ID (decimal integer string) before composing. The template's subject/body/to/cc/bcc/attachments are merged with user-supplied flags (user flags win). Requires --as user."},
 		signatureFlag,
+		noSignatureFlag,
 		priorityFlag,
 		eventSummaryFlag, eventStartFlag, eventEndFlag, eventLocationFlag,
 		showLintDetailsFlag},
@@ -98,7 +99,7 @@ var MailSend = common.Shortcut{
 		if err := validateSendTime(runtime); err != nil {
 			return err
 		}
-		if err := validateSignatureWithPlainText(runtime.Bool("plain-text"), runtime.Str("signature-id")); err != nil {
+		if err := validateSignatureFlags(runtime.Bool("no-signature"), runtime.Str("signature-id")); err != nil {
 			return err
 		}
 		// Resolve the body content first (reading --body-file if set) so
@@ -137,7 +138,6 @@ var MailSend = common.Shortcut{
 		sendTime := runtime.Str("send-time")
 
 		senderEmail := resolveComposeSenderEmail(runtime)
-		signatureID := runtime.Str("signature-id")
 		priority, err := parsePriority(runtime.Str("priority"))
 		if err != nil {
 			return err
@@ -195,7 +195,7 @@ var MailSend = common.Shortcut{
 			}
 		}
 
-		sigResult, err := resolveSignature(ctx, runtime, mailboxID, signatureID, senderEmail)
+		sigResult, err := resolveComposeSignature(ctx, runtime, mailboxID, senderEmail, sigKindSend)
 		if err != nil {
 			return err
 		}
@@ -230,7 +230,7 @@ var MailSend = common.Shortcut{
 		// `lint_applied[]` / `original_blocked[]` even on the plain-text path.
 		lintApplied, lintBlocked := emptyLintEnvelopeFields()
 		if plainText {
-			composedTextBody = body
+			composedTextBody = appendPlainTextSignature(body, sigResult)
 			bld = bld.TextBody([]byte(composedTextBody))
 		} else if bodyIsHTML(body) || sigResult != nil {
 			// If signature is requested on plain-text body, auto-upgrade to HTML.
@@ -275,7 +275,7 @@ var MailSend = common.Shortcut{
 				return err
 			}
 		} else {
-			composedTextBody = body
+			composedTextBody = appendPlainTextSignature(body, sigResult)
 			bld = bld.TextBody([]byte(composedTextBody))
 		}
 		// Embed template SMALL non-inline attachments via AddAttachment.
