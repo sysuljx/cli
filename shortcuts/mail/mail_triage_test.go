@@ -1478,14 +1478,16 @@ func boolPtr(v bool) *bool { return &v }
 
 // --- mailbox_id preservation tests ---
 
+// TestMailTriageStructuredOutputPreservesMailboxID verifies mailbox and notice metadata.
 func TestMailTriageStructuredOutputPreservesMailboxID(t *testing.T) {
 	tests := []struct {
-		name      string
-		mailbox   string
-		format    string
-		args      []string
-		register  func(*httpmock.Registry, string)
-		wantCount int
+		name       string
+		mailbox    string
+		format     string
+		args       []string
+		register   func(*httpmock.Registry, string)
+		wantCount  int
+		wantNotice string
 	}{
 		{
 			name:    "list json default mailbox",
@@ -1522,9 +1524,10 @@ func TestMailTriageStructuredOutputPreservesMailboxID(t *testing.T) {
 			register: func(reg *httpmock.Registry, mailbox string) {
 				registerMailTriageSearchStub(reg, mailbox, []interface{}{
 					mailTriageSearchItem("search_pub_001", "Shared search"),
-				}, false, "")
+				}, false, "", "The query is too long and has been truncated to the first 50 characters for search.")
 			},
-			wantCount: 1,
+			wantCount:  1,
+			wantNotice: "The query is too long and has been truncated to the first 50 characters for search.",
 		},
 		{
 			name:    "empty list json keeps top-level mailbox",
@@ -1559,6 +1562,9 @@ func TestMailTriageStructuredOutputPreservesMailboxID(t *testing.T) {
 			if data["mailbox_id"] != tt.mailbox {
 				t.Fatalf("top-level mailbox_id mismatch: got %v, want %q", data["mailbox_id"], tt.mailbox)
 			}
+			if tt.wantNotice != "" && data["notice"] != tt.wantNotice {
+				t.Fatalf("notice mismatch: got %v, want %q", data["notice"], tt.wantNotice)
+			}
 			messages := mailTriageMessagesFromOutput(t, data)
 			if len(messages) != tt.wantCount {
 				t.Fatalf("message count mismatch: got %d, want %d", len(messages), tt.wantCount)
@@ -1572,6 +1578,7 @@ func TestMailTriageStructuredOutputPreservesMailboxID(t *testing.T) {
 	}
 }
 
+// TestMailTriageMissingMessageMetadataStillGetsMailboxID verifies fallback rows keep mailbox IDs.
 func TestMailTriageMissingMessageMetadataStillGetsMailboxID(t *testing.T) {
 	f, stdout, _, reg := mailShortcutTestFactory(t)
 	defer reg.Verify(t)
@@ -1604,6 +1611,7 @@ func TestMailTriageMissingMessageMetadataStillGetsMailboxID(t *testing.T) {
 	}
 }
 
+// TestMailTriageTableOutputPreservesMailboxContext verifies public mailbox table hints.
 func TestMailTriageTableOutputPreservesMailboxContext(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -1654,6 +1662,33 @@ func TestMailTriageTableOutputPreservesMailboxContext(t *testing.T) {
 	}
 }
 
+// TestMailTriageDefaultTableOutputPrintsSearchNoticeToStderr verifies stderr notices.
+func TestMailTriageDefaultTableOutputPrintsSearchNoticeToStderr(t *testing.T) {
+	const notice = "The query is too long and has been truncated to the first 50 characters for search."
+
+	f, stdout, stderr, reg := mailShortcutTestFactory(t)
+	defer reg.Verify(t)
+
+	registerMailTriageSearchStub(reg, "me", []interface{}{
+		mailTriageSearchItem("msg_search_notice", "Search notice result"),
+	}, false, "", notice)
+
+	if err := runMountedMailShortcut(t, MailTriage, []string{
+		"+triage",
+		"--query", strings.Repeat("q", 81),
+	}, f, stdout); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if out := stdout.String(); !strings.Contains(out, "msg_search_notice") {
+		t.Fatalf("stdout should contain table row, got:\n%s", out)
+	}
+	if errOut := stderr.String(); !strings.Contains(errOut, "notice: "+notice) {
+		t.Fatalf("stderr should contain search notice, got:\n%s", errOut)
+	}
+}
+
+// decodeMailTriageJSONOutput decodes structured triage output for assertions.
 func decodeMailTriageJSONOutput(t *testing.T, stdout interface{ Bytes() []byte }) map[string]interface{} {
 	t.Helper()
 	var data map[string]interface{}
@@ -1663,6 +1698,7 @@ func decodeMailTriageJSONOutput(t *testing.T, stdout interface{ Bytes() []byte }
 	return data
 }
 
+// mailTriageMessagesFromOutput extracts triage messages as object maps.
 func mailTriageMessagesFromOutput(t *testing.T, data map[string]interface{}) []map[string]interface{} {
 	t.Helper()
 	rawMessages, ok := data["messages"].([]interface{})
@@ -1715,13 +1751,17 @@ func registerMailTriageBatchStub(reg *httpmock.Registry, mailbox string, message
 	})
 }
 
-func registerMailTriageSearchStub(reg *httpmock.Registry, mailbox string, items []interface{}, hasMore bool, pageToken string) {
+// registerMailTriageSearchStub registers a mailbox search response for triage tests.
+func registerMailTriageSearchStub(reg *httpmock.Registry, mailbox string, items []interface{}, hasMore bool, pageToken string, notices ...string) {
 	data := map[string]interface{}{
 		"items":    items,
 		"has_more": hasMore,
 	}
 	if pageToken != "" {
 		data["page_token"] = pageToken
+	}
+	if len(notices) > 0 && notices[0] != "" {
+		data["notice"] = notices[0]
 	}
 	reg.Register(&httpmock.Stub{
 		Method: "POST",
