@@ -401,6 +401,17 @@ func serviceMethodRun(opts *ServiceMethodOptions) error {
 		return err
 	}
 
+	var ac *client.APIClient
+	if needsServiceRequestPreparation(opts) {
+		ac, err = f.NewAPIClientWithConfig(config)
+		if err != nil {
+			return err
+		}
+		if err := prepareServiceRequest(opts, ac, &request); err != nil {
+			return err
+		}
+	}
+
 	if opts.DryRun {
 		if fileMeta != nil {
 			return cmdutil.PrintDryRunWithFile(f.IOStreams.Out, request, config, opts.Format, fileMeta.FieldName, fileMeta.FilePath, fileMeta.FormFields)
@@ -414,9 +425,11 @@ func serviceMethodRun(opts *ServiceMethodOptions) error {
 		}
 	}
 
-	ac, err := f.NewAPIClientWithConfig(config)
-	if err != nil {
-		return err
+	if ac == nil {
+		ac, err = f.NewAPIClientWithConfig(config)
+		if err != nil {
+			return err
+		}
 	}
 
 	out := f.IOStreams.Out
