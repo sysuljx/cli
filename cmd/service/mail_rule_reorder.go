@@ -48,7 +48,7 @@ func prepareMailRuleReorderRequest(opts *ServiceMethodOptions, ac *client.APICli
 	if len(currentIDs) == 0 {
 		return errs.NewValidationError(errs.SubtypeInvalidArgument,
 			"mail user mailbox rules reorder requires current mailbox rules, but list returned no rules").
-			WithParam("rule_ids")
+			WithParam("--data.rule_ids")
 	}
 
 	known := make(map[string]bool, len(currentIDs))
@@ -59,7 +59,7 @@ func prepareMailRuleReorderRequest(opts *ServiceMethodOptions, ac *client.APICli
 		if !known[id] {
 			return errs.NewValidationError(errs.SubtypeInvalidArgument,
 				"--data.rule_ids contains unknown rule_id %q", id).
-				WithParam("rule_ids")
+				WithParam("--data.rule_ids")
 		}
 	}
 
@@ -88,17 +88,14 @@ func mailRuleReorderInputIDs(data interface{}) ([]string, error) {
 	}
 	raw, ok := body["rule_ids"]
 	if !ok {
-		return nil, errs.NewValidationError(errs.SubtypeInvalidArgument,
-			"--data.rule_ids is required").WithParam("rule_ids")
+		return nil, mailRuleIDsValidationError("--data.rule_ids is required")
 	}
 	rawIDs, ok := raw.([]interface{})
 	if !ok {
-		return nil, errs.NewValidationError(errs.SubtypeInvalidArgument,
-			"--data.rule_ids must be a non-empty string array").WithParam("rule_ids")
+		return nil, mailRuleIDsValidationError("--data.rule_ids must be a non-empty string array")
 	}
 	if len(rawIDs) == 0 {
-		return nil, errs.NewValidationError(errs.SubtypeInvalidArgument,
-			"--data.rule_ids must not be empty").WithParam("rule_ids")
+		return nil, mailRuleIDsValidationError("--data.rule_ids must not be empty")
 	}
 
 	ids := make([]string, 0, len(rawIDs))
@@ -107,16 +104,20 @@ func mailRuleReorderInputIDs(data interface{}) ([]string, error) {
 		id, ok := rawID.(string)
 		if !ok || id == "" {
 			return nil, errs.NewValidationError(errs.SubtypeInvalidArgument,
-				"--data.rule_ids[%d] must be a non-empty string", i).WithParam("rule_ids")
+				"--data.rule_ids[%d] must be a non-empty string", i).WithParam("--data.rule_ids")
 		}
 		if seen[id] {
 			return nil, errs.NewValidationError(errs.SubtypeInvalidArgument,
-				"--data.rule_ids contains duplicate rule_id %q", id).WithParam("rule_ids")
+				"--data.rule_ids contains duplicate rule_id %q", id).WithParam("--data.rule_ids")
 		}
 		seen[id] = true
 		ids = append(ids, id)
 	}
 	return ids, nil
+}
+
+func mailRuleIDsValidationError(message string) *errs.ValidationError {
+	return errs.NewValidationError(errs.SubtypeInvalidArgument, message).WithParam("--data.rule_ids")
 }
 
 func mailRuleListIDs(result interface{}) ([]string, error) {

@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/larksuite/cli/errs"
@@ -72,6 +71,7 @@ func mailRuleReorderStub() *httpmock.Stub {
 
 func executeMailRuleReorder(t *testing.T, data string, dryRun bool, stubs ...*httpmock.Stub) (*bytes.Buffer, *httpmock.Stub, error) {
 	t.Helper()
+	t.Setenv("LARKSUITE_CLI_CONFIG_DIR", t.TempDir())
 	f, stdout, _, reg := cmdutil.TestFactory(t, &core.CliConfig{
 		AppID: "test-app-mail-rules", AppSecret: "test-secret", Brand: core.BrandFeishu,
 	})
@@ -102,7 +102,29 @@ func capturedRuleIDs(t *testing.T, stub *httpmock.Stub) []string {
 	return body.RuleIDs
 }
 
-func requireValidationError(t *testing.T, err error, want string) {
+func dryRunRuleIDs(t *testing.T, stdout string) []string {
+	t.Helper()
+	const prefix = "=== Dry Run ===\n"
+	if len(stdout) <= len(prefix) || stdout[:len(prefix)] != prefix {
+		t.Fatalf("unexpected dry-run output:\n%s", stdout)
+	}
+	var out struct {
+		API []struct {
+			Body struct {
+				RuleIDs []string `json:"rule_ids"`
+			} `json:"body"`
+		} `json:"api"`
+	}
+	if err := json.Unmarshal([]byte(stdout[len(prefix):]), &out); err != nil {
+		t.Fatalf("decode dry-run JSON: %v\nraw=%s", err, stdout)
+	}
+	if len(out.API) != 1 {
+		t.Fatalf("dry-run api call count = %d, want 1", len(out.API))
+	}
+	return out.API[0].Body.RuleIDs
+}
+
+func requireValidationError(t *testing.T, err error, wantMessage, wantParam string) {
 	t.Helper()
 	if err == nil {
 		t.Fatal("expected validation error")
@@ -111,8 +133,17 @@ func requireValidationError(t *testing.T, err error, want string) {
 	if !errors.As(err, &validationErr) {
 		t.Fatalf("expected ValidationError, got %T: %v", err, err)
 	}
-	if !strings.Contains(err.Error(), want) {
-		t.Fatalf("expected %q in error, got %v", want, err)
+	if validationErr.Category != errs.CategoryValidation {
+		t.Fatalf("validation category = %q, want %q", validationErr.Category, errs.CategoryValidation)
+	}
+	if validationErr.Subtype != errs.SubtypeInvalidArgument {
+		t.Fatalf("validation subtype = %q, want %q", validationErr.Subtype, errs.SubtypeInvalidArgument)
+	}
+	if validationErr.Message != wantMessage {
+		t.Fatalf("validation message = %q, want %q", validationErr.Message, wantMessage)
+	}
+	if validationErr.Param != wantParam {
+		t.Fatalf("validation param = %q, want %q", validationErr.Param, wantParam)
 	}
 }
 
@@ -143,12 +174,12 @@ func TestMailRuleReorderKeepsCompleteRuleIDs(t *testing.T) {
 func TestMailRuleReorderUnknownIDDoesNotCallReorder(t *testing.T) {
 	list := mailRuleListStub("r1", "r2")
 	_, _, err := executeMailRuleReorder(t, `{"rule_ids":["r3"]}`, false, list)
-	requireValidationError(t, err, "unknown rule_id")
+	requireValidationError(t, err, `--data.rule_ids contains unknown rule_id "r3"`, "--data.rule_ids")
 }
 
 func TestMailRuleReorderDuplicateIDDoesNotCallListOrReorder(t *testing.T) {
 	_, _, err := executeMailRuleReorder(t, `{"rule_ids":["r1","r1"]}`, false)
-	requireValidationError(t, err, "duplicate rule_id")
+	requireValidationError(t, err, `--data.rule_ids contains duplicate rule_id "r1"`, "--data.rule_ids")
 }
 
 func TestMailRuleReorderDryRunListsAndPrintsCompletedBody(t *testing.T) {
@@ -160,11 +191,7 @@ func TestMailRuleReorderDryRunListsAndPrintsCompletedBody(t *testing.T) {
 	if len(list.CapturedBodies) != 1 {
 		t.Fatalf("list call count = %d, want 1", len(list.CapturedBodies))
 	}
-	out := stdout.String()
-	if !strings.Contains(out, `"rule_ids"`) ||
-		!strings.Contains(out, `"r3"`) ||
-		!strings.Contains(out, `"r1"`) ||
-		!strings.Contains(out, `"r2"`) {
-		t.Fatalf("dry-run output missing completed rule_ids, got:\n%s", out)
+	if got, want := dryRunRuleIDs(t, stdout.String()), []string{"r3", "r1", "r2"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("dry-run rule_ids = %#v, want %#v", got, want)
 	}
 }
