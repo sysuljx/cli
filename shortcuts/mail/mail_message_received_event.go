@@ -84,8 +84,8 @@ func EventKeys() []eventlib.KeyDefinition {
 			PreConsume:            preConsumeMailMessageReceived,
 			Match:                 matchMailMessageReceived,
 			Process:               processMailMessageReceived,
-			Scopes:                MailWatch.Scopes,
-			AuthTypes:             []string{"user"},
+			Scopes:                mailWatchScopes,
+			AuthTypes:             mailWatchAuthTypes,
 			RequiredConsoleEvents: []string{mailEventType},
 		},
 	}

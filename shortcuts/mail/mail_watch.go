@@ -66,6 +66,11 @@ func handleMailWatchSignal(errOut io.Writer, sig os.Signal, eventCount int64, un
 
 const mailEventType = "mail.user_mailbox.event.message_received_v1"
 
+var (
+	mailWatchScopes    = []string{"mail:event", "mail:user_mailbox.event.mail_address:read", "mail:user_mailbox:readonly", "mail:user_mailbox.message:readonly", "mail:user_mailbox.message.address:read", "mail:user_mailbox.message.subject:read", "mail:user_mailbox.message.body:read"}
+	mailWatchAuthTypes = []string{"user"}
+)
+
 // promptInjectionPatterns lists known prompt injection trigger phrases.
 var promptInjectionPatterns = []string{
 	"ignore all previous",
@@ -96,8 +101,8 @@ var MailWatch = common.Shortcut{
 	Command:     "+watch",
 	Description: "Watch for incoming mail events via the unified event consume framework. Run with --print-output-schema to see per-format field reference before parsing output.",
 	Risk:        "read",
-	Scopes:      []string{"mail:event", "mail:user_mailbox.event.mail_address:read", "mail:user_mailbox:readonly", "mail:user_mailbox.message:readonly", "mail:user_mailbox.message.address:read", "mail:user_mailbox.message.subject:read", "mail:user_mailbox.message.body:read"},
-	AuthTypes:   []string{"user"},
+	Scopes:      mailWatchScopes,
+	AuthTypes:   mailWatchAuthTypes,
 	Flags: []common.Flag{
 		{Name: "format", Default: "data", Desc: "json: NDJSON stream with ok/data envelope; data: bare NDJSON stream"},
 		{Name: "msg-format", Default: "metadata", Desc: "message payload mode: metadata(headers + meta, for triage/notification) | minimal(IDs and state only, no headers, for tracking read/folder changes) | plain_text_full(all metadata fields + full plain-text body) | event(raw WebSocket event, no API call, for debug) | full(full message including HTML body and attachments)"},
