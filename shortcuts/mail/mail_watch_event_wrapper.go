@@ -17,6 +17,7 @@ import (
 	"github.com/larksuite/cli/internal/event/consume"
 	"github.com/larksuite/cli/internal/event/transport"
 	"github.com/larksuite/cli/internal/validate"
+	"github.com/larksuite/cli/internal/vfs"
 	"github.com/larksuite/cli/shortcuts/common"
 )
 
@@ -39,6 +40,9 @@ func runMailWatchViaEventConsume(ctx context.Context, runtime *common.RuntimeCon
 			return mailValidationParamError("--output-dir", "invalid --output-dir %q: %v", outputDir, err).WithCause(err)
 		}
 		outputDir = safePath
+		if err := vfs.MkdirAll(outputDir, 0700); err != nil {
+			return mailFileIOError("cannot create output directory %q: %v", err, outputDir, err)
+		}
 	}
 
 	var timeout time.Duration

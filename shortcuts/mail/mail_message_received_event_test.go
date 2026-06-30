@@ -93,6 +93,24 @@ func TestNormalizeMailMessageReceivedParamsResolvesMailboxAndFilters(t *testing.
 	}
 }
 
+func TestNormalizeMailMessageReceivedParamsValidatesFilterJSONBeforeRuntimeCalls(t *testing.T) {
+	rt := &mailEventStubAPIClient{}
+	params := map[string]string{
+		mailEventParamMailbox: "me",
+		mailEventParamLabels:  "not-json-array",
+	}
+	err := normalizeMailMessageReceivedParams(context.Background(), rt, params)
+	if err == nil {
+		t.Fatal("expected labels validation error")
+	}
+	if got := err.Error(); !strings.Contains(got, "labels") || !strings.Contains(got, "JSON array") {
+		t.Fatalf("error = %q, want labels JSON array validation", got)
+	}
+	if len(rt.calls) != 0 {
+		t.Fatalf("runtime calls = %#v, want none before local param validation", rt.calls)
+	}
+}
+
 func TestPreConsumeMailMessageReceivedSubscribesAndCleansUp(t *testing.T) {
 	rt := &mailEventStubAPIClient{}
 	cleanup, err := preConsumeMailMessageReceived(context.Background(), rt, map[string]string{mailEventParamMailbox: "me"})

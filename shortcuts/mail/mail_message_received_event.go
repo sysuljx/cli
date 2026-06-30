@@ -98,6 +98,9 @@ func normalizeMailMessageReceivedParams(ctx context.Context, rt eventlib.APIClie
 	if err := validateMailEventFormats(params); err != nil {
 		return err
 	}
+	if err := validateMailEventFilterParams(params); err != nil {
+		return err
+	}
 	mailbox := strings.TrimSpace(params[mailEventParamMailbox])
 	if mailbox == "" {
 		mailbox = "me"
@@ -123,6 +126,20 @@ func normalizeMailMessageReceivedParams(ctx context.Context, rt eventlib.APIClie
 	}
 	params[mailEventParamLabelIDsResolved] = strings.Join(labelIDs, ",")
 	params[mailEventParamFolderIDsResolved] = strings.Join(folderIDs, ",")
+	return nil
+}
+
+func validateMailEventFilterParams(params map[string]string) error {
+	for _, param := range []string{
+		mailEventParamLabelIDs,
+		mailEventParamLabels,
+		mailEventParamFolderIDs,
+		mailEventParamFolders,
+	} {
+		if _, err := parseJSONArrayFlag(params[param], param); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
